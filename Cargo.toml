@@ -5,3 +5,13 @@ authors = ["Michael Noronha <michaeltnoronha@gmail.com>"]
 edition = "2018"
 
 [dependencies]
+image = "0.21.0"
+ndarray = "0.12.1"
+
+[lib]
+name = "viola_jones"
+path = "src/lib.rs"
+
+[[bin]]
+name = "detector"
+path = "src/bin.rs"
