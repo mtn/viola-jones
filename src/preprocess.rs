@@ -1,11 +1,10 @@
 /// Functions for loading the pre-processing data
 extern crate image;
 
+use super::Matrix;
 use image::DynamicImage;
 use ndarray::Array;
 use std::fs;
-
-pub type Matrix = ndarray::Array2<u32>;
 
 /// Load input faces and backgrounds into matrices
 pub fn load_and_preprocess_data(
@@ -121,8 +120,7 @@ mod tests {
 
         for x in 0..w {
             for y in 0..h {
-                // 255 / 3 == 85
-                assert!(mat[[x as usize, y as usize]] == 85);
+                assert!(mat[[x as usize, y as usize]] == 255 / 3);
             }
         }
     }

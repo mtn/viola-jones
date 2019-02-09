@@ -1,9 +1,6 @@
 extern crate viola_jones;
 
 fn main() {
-    let (mut faces, mut backgrounds) =
-        viola_jones::preprocess::load_and_preprocess_data("data/faces", "data/background");
+    let mut learner = viola_jones::Learner::new("data/faces", "data/background");
+    learner.train();
 }
-
-#[cfg(test)]
-mod tests {}
