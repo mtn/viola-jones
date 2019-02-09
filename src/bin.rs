@@ -1,7 +1,8 @@
 extern crate viola_jones;
 
 fn main() {
-    let (faces, backgrounds) = viola_jones::load_data("data/faces", "data/background");
+    let (mut faces, mut backgrounds) =
+        viola_jones::preprocess::load_and_preprocess_data("data/faces", "data/background");
 }
 
 #[cfg(test)]
