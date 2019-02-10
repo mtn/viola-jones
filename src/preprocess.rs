@@ -11,13 +11,13 @@ pub fn load_and_preprocess_data(
     faces_dir: &str,
     background_dir: &str,
 ) -> (Vec<Matrix>, Vec<Matrix>) {
-    let mut faces = load_imgs_from_dir(faces_dir);
-    let mut backgrounds = load_imgs_from_dir(background_dir);
+    let faces = load_imgs_from_dir(faces_dir);
+    let backgrounds = load_imgs_from_dir(background_dir);
 
-    compute_integral_images(&mut faces);
-    compute_integral_images(&mut backgrounds);
+    let integral_faces = compute_integral_images(faces);
+    let integral_backgrounds = compute_integral_images(backgrounds);
 
-    (faces, backgrounds)
+    (integral_faces, integral_backgrounds)
 }
 
 /// Load an opened image into a matrix
@@ -71,28 +71,41 @@ fn load_imgs_from_dir(dir_name: &str) -> Vec<Matrix> {
     loaded
 }
 
-/// Compute the integral image for a matrix, in place
-fn compute_integral_image(img: &mut Matrix) {
+/// Compute the integral image for a matrix. This is not done in place so that the
+/// output can be zero-padded.
+fn compute_integral_image(img: &Matrix) -> Matrix {
     let (w, h) = img.dim();
+    let mut integral = Matrix::zeros((w + 1, h + 1));
 
     for row in 0..w {
-        for col in 1..h {
-            img[[row as usize, col as usize]] += img[[row as usize, col - 1 as usize]];
+        for col in 0..h {
+            integral[[row + 1 as usize, col + 1 as usize]] = img[[row as usize, col as usize]];
         }
     }
-    for col in 0..h {
-        for row in 1..w {
-            img[[row as usize, col as usize]] += img[[row - 1 as usize, col as usize]];
+
+    for row in 0..=w {
+        for col in 1..=h {
+            integral[[row as usize, col as usize]] += integral[[row as usize, col - 1 as usize]];
         }
     }
+    for col in 0..=h {
+        for row in 1..=w {
+            integral[[row as usize, col as usize]] += integral[[row - 1 as usize, col as usize]];
+        }
+    }
+
+    integral
 }
 
 /// Compute the integral images for a set of image matrices
-fn compute_integral_images(imgs: &mut Vec<Matrix>) {
+fn compute_integral_images(imgs: Vec<Matrix>) -> Vec<Matrix> {
     // Unfortunately ndarray doesn't have something like np's cumsum yet
-    for img in imgs.iter_mut() {
-        compute_integral_image(img);
+    let mut integral_imgs: Vec<Matrix> = Vec::with_capacity(imgs.len());
+    for img in imgs.iter() {
+        integral_imgs.push(compute_integral_image(img));
     }
+
+    integral_imgs
 }
 
 #[cfg(test)]
@@ -129,17 +142,22 @@ mod tests {
     // Checks that the integral image is being computed correctly on a simple 4x4 example
     fn integral_images_computed_correctly() {
         let inp: Vec<u32> = vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16];
-        let exp: Vec<u32> = vec![1, 3, 6, 10, 6, 14, 24, 36, 15, 33, 54, 78, 28, 60, 96, 136];
+        let exp: Vec<u32> = vec![
+            0, 0, 0, 0, 0, 0, 1, 3, 6, 10, 0, 6, 14, 24, 36, 0, 15, 33, 54, 78, 0, 28, 60, 96, 136,
+        ];
 
         let mut inp_mat = Array::from_vec(inp)
             .into_shape((4, 4))
             .expect("Failed to transform input array into matrix");
         let exp_mat = Array::from_vec(exp)
-            .into_shape((4, 4))
+            .into_shape((5, 5))
             .expect("Failed to transform input array into matrix");
 
-        compute_integral_image(&mut inp_mat);
+        let int_inp_mat = compute_integral_image(&inp_mat);
 
-        assert!(inp_mat == exp_mat);
+        println!("{:?}", int_inp_mat);
+
+        assert!(int_inp_mat.dim() == (5, 5));
+        assert!(int_inp_mat == exp_mat);
     }
 }

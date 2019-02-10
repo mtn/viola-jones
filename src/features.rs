@@ -1,8 +1,7 @@
+use super::util::Rectangle;
 /// Haar Feature definitions and computation methods.
 /// Design is somewhat based on PistonDevelopers/imageproc.
-
 use super::Matrix;
-
 
 pub struct HaarFeature {
     feature_type: HaarFeatureType,
@@ -21,7 +20,13 @@ pub enum HaarFeatureType {
 }
 
 impl HaarFeature {
-    pub fn new(feature_type: HaarFeatureType, w: usize, h: usize, x: usize, y: usize) -> HaarFeature {
+    pub fn new(
+        feature_type: HaarFeatureType,
+        w: usize,
+        h: usize,
+        x: usize,
+        y: usize,
+    ) -> HaarFeature {
         let tl_pos = match &feature_type {
             HaarFeatureType::TwoVertical => true,
             HaarFeatureType::TwoHorizontal => false,
@@ -39,13 +44,18 @@ impl HaarFeature {
     }
 
     /// Evaluate the Haar feature on the integral image
-    pub fn evaluate(&self, img: &Matrix) -> u32 {
+    pub fn evaluate(&self, _img: &Matrix) -> u32 {
         match &self.feature_type {
             _ => unimplemented!(),
             // HaarFeatureType::TwoVertical => {
             //     // img[[self.x + self.w, self.h + self.y]] + img[[self.]]
             // }
         }
+    }
+
+    /// Turn width-height into rectangle
+    pub fn to_rectangle(&self) -> Rectangle {
+        Rectangle::new((self.x, self.y), (self.x + self.w - 1, self.y + self.h - 1))
     }
 }
 
@@ -58,13 +68,31 @@ pub fn init_haar_features(minw: usize, minh: usize, maxw: usize, maxh: usize) ->
             for x in 0..=(maxw - w) {
                 for y in 0..=(maxh - h) {
                     if x + 2 * w <= maxw {
-                        haar_features.push(HaarFeature::new(HaarFeatureType::TwoHorizontal, w, h, x, y));
+                        haar_features.push(HaarFeature::new(
+                            HaarFeatureType::TwoHorizontal,
+                            w,
+                            h,
+                            x,
+                            y,
+                        ));
                     }
                     if y + 2 * h <= maxh {
-                        haar_features.push(HaarFeature::new(HaarFeatureType::TwoVertical, w, h, x, y));
+                        haar_features.push(HaarFeature::new(
+                            HaarFeatureType::TwoVertical,
+                            w,
+                            h,
+                            x,
+                            y,
+                        ));
                     }
                     if x + 3 * w <= maxw {
-                        haar_features.push(HaarFeature::new(HaarFeatureType::ThreeHorizontal, w, h, x, y));
+                        haar_features.push(HaarFeature::new(
+                            HaarFeatureType::ThreeHorizontal,
+                            w,
+                            h,
+                            x,
+                            y,
+                        ));
                     }
                     if x + 2 * w <= maxw && y + 2 * h < maxh {
                         haar_features.push(HaarFeature::new(HaarFeatureType::TwoByTwo, w, h, x, y));

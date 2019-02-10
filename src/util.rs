@@ -1,20 +1,46 @@
 /// General utility functions
-
 use super::Matrix;
-use std::cmp;
 
-/// Compute the area of a block within an (assumed) integral image
-pub fn compute_area(img: &Matrix, x: usize, y: usize, w: usize, h: usize) -> u32 {
-    if w == 0 || h == 0 {
-        return 0
+#[derive(Debug)]
+pub struct Rectangle {
+    pub xmin: usize,
+    pub xmax: usize,
+    pub ymin: usize,
+    pub ymax: usize,
+}
+
+impl Rectangle {
+    pub fn new(p1: (usize, usize), p2: (usize, usize)) -> Rectangle {
+        assert!(p1.0 <= p2.0);
+        assert!(p1.1 <= p2.1);
+
+        Rectangle {
+            xmin: p1.0,
+            xmax: p2.0,
+            ymin: p1.1,
+            ymax: p2.1,
+        }
+    }
+}
+
+/// Compute the area of a block within an (assumed) padded integral image
+pub fn compute_area(img: &Matrix, r: &Rectangle) -> u32 {
+    if r.xmax - r.xmin == 0 || r.ymax - r.ymin == 0 {
+        return 0;
     }
 
-    // Width and height are 1-indexed
-    // let w = w - 1;
-    // let h = h - 1;
-
     // println!("{} {} {} {}", img[[x+w, y+h]] , img[[x, y]] , img[[x, y+h]] , img[[x+w, y]]);
-    img[[x+w, y+h]] + img[[x, y]] - img[[x, y+h]] - img[[x+w, y]]
+    println!("hi");
+    println!("r is {:?}", r);
+    println!(
+        "{} {} {} {}",
+        img[[r.xmax, r.ymax]],
+        img[[r.xmin, r.ymin]],
+        img[[r.xmin, r.ymax]],
+        img[[r.xmax, r.ymin]]
+    );
+    img[[r.xmax, r.ymax]] + img[[r.xmin, r.ymin]] - img[[r.xmin, r.ymax]] - img[[r.xmax, r.ymin]]
+    // img[[x+w, y+h]] + img[[x, y]] - img[[x, y+h]] - img[[x+w, y]]
 }
 
 #[cfg(test)]
@@ -32,8 +58,9 @@ mod tests {
             .into_shape((4, 4))
             .expect("Failed to transform input array into matrix");
 
-        println!("{:?}", img);
-        println!("{}", compute_area(&img, 0, 0, 2, 2));
-        assert!(compute_area(&img, 0, 0, 2, 2) == 10);
+        let r = Rectangle::new((0, 0), (1, 1));
+        println!("{}", compute_area(&img, &r));
+        assert!(false);
+        // assert!(compute_area(&img, &Rectangle::new(0, 0, 2, 2)) == 10);
     }
 }
