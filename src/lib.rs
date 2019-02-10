@@ -2,13 +2,13 @@ extern crate ndarray;
 
 pub mod features;
 pub mod preprocess;
-mod util;
 pub mod weak_classifier;
+mod util;
 
 use features::HaarFeature;
 use weak_classifier::WeakClassifier;
 
-pub type Matrix = ndarray::Array2<u32>;
+pub type Matrix = ndarray::Array2<i32>;
 
 pub struct Learner {
     faces: Vec<Matrix>,

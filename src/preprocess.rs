@@ -26,7 +26,7 @@ fn img_as_matrix(img: DynamicImage) -> Matrix {
     let raw_pixels = img.raw_pixels();
     assert!(raw_pixels.len() == 64 * 64 * 3);
 
-    let mut out_pixels: Vec<u32> = Vec::with_capacity(64 * 64);
+    let mut out_pixels: Vec<i32> = Vec::with_capacity(64 * 64);
     // Average over the colors (doing integer division)
     for i in 0..(64 * 64) {
         let start_ind = i * 3;
@@ -35,7 +35,7 @@ fn img_as_matrix(img: DynamicImage) -> Matrix {
         out_px += raw_pixels[start_ind + 1] / 3;
         out_px += raw_pixels[start_ind + 2] / 3;
 
-        out_pixels.push(out_px as u32);
+        out_pixels.push(out_px as i32);
     }
 
     let pixel_arr = Array::from_vec(out_pixels);
@@ -73,7 +73,7 @@ fn load_imgs_from_dir(dir_name: &str) -> Vec<Matrix> {
 
 /// Compute the integral image for a matrix. This is not done in place so that the
 /// output can be zero-padded.
-fn compute_integral_image(img: &Matrix) -> Matrix {
+pub fn compute_integral_image(img: &Matrix) -> Matrix {
     let (w, h) = img.dim();
     let mut integral = Matrix::zeros((w + 1, h + 1));
 
@@ -111,7 +111,7 @@ fn compute_integral_images(imgs: Vec<Matrix>) -> Vec<Matrix> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use image::{GenericImage, GenericImageView, Rgba};
+    use image::{GenericImage, Rgba};
 
     #[test]
     // Builds a purely red (255, 0, 0) 64x64 input and checks that it's
@@ -133,7 +133,7 @@ mod tests {
 
         for x in 0..w {
             for y in 0..h {
-                assert!(mat[[x as usize, y as usize]] == 255 / 3);
+                assert!(mat[[y as usize, x as usize]] == 255 / 3);
             }
         }
     }
@@ -141,12 +141,12 @@ mod tests {
     #[test]
     // Checks that the integral image is being computed correctly on a simple 4x4 example
     fn integral_images_computed_correctly() {
-        let inp: Vec<u32> = vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16];
-        let exp: Vec<u32> = vec![
+        let inp: Vec<i32> = vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16];
+        let exp: Vec<i32> = vec![
             0, 0, 0, 0, 0, 0, 1, 3, 6, 10, 0, 6, 14, 24, 36, 0, 15, 33, 54, 78, 0, 28, 60, 96, 136,
         ];
 
-        let mut inp_mat = Array::from_vec(inp)
+        let inp_mat = Array::from_vec(inp)
             .into_shape((4, 4))
             .expect("Failed to transform input array into matrix");
         let exp_mat = Array::from_vec(exp)
@@ -154,8 +154,6 @@ mod tests {
             .expect("Failed to transform input array into matrix");
 
         let int_inp_mat = compute_integral_image(&inp_mat);
-
-        println!("{:?}", int_inp_mat);
 
         assert!(int_inp_mat.dim() == (5, 5));
         assert!(int_inp_mat == exp_mat);
