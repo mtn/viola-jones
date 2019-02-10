@@ -30,8 +30,8 @@ pub fn compute_area(img: &Matrix, r: &Rectangle) -> u32 {
     }
 
     // println!("{} {} {} {}", img[[x+w, y+h]] , img[[x, y]] , img[[x, y+h]] , img[[x+w, y]]);
-    println!("hi");
-    println!("r is {:?}", r);
+    // println!("hi");
+    // println!("r is {:?}", r);
     println!(
         "{} {} {} {}",
         img[[r.xmax, r.ymax]],
@@ -52,15 +52,18 @@ mod tests {
     // Checks that sums are computed correctly for integral images
     fn areas_computed_correctly() {
         // Integral img from [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16]
-        let inp: Vec<u32> = vec![1, 3, 6, 10, 6, 14, 24, 36, 15, 33, 54, 78, 28, 60, 96, 136];
+        let inp: Vec<u32> = vec![
+            0, 0, 0, 0, 0, 0, 1, 3, 6, 10, 0, 6, 14, 24, 36, 0, 15, 33, 54, 78, 0, 28, 60, 96, 136,
+        ];
 
         let mut img = Array::from_vec(inp)
-            .into_shape((4, 4))
+            .into_shape((5, 5))
             .expect("Failed to transform input array into matrix");
 
-        let r = Rectangle::new((0, 0), (1, 1));
-        println!("{}", compute_area(&img, &r));
-        assert!(false);
-        // assert!(compute_area(&img, &Rectangle::new(0, 0, 2, 2)) == 10);
+        assert!(compute_area(&img, &Rectangle::new((0, 0), (2, 2))) == 14);
+        assert!(compute_area(&img, &Rectangle::new((0, 0), (4, 4))) == 136);
+        assert!(compute_area(&img, &Rectangle::new((1, 1), (4, 4))) == 99);
+        assert!(compute_area(&img, &Rectangle::new((1, 1), (2, 2))) == 6);
+        assert!(compute_area(&img, &Rectangle::new((1, 1), (3, 3))) == 34);
     }
 }
