@@ -2,8 +2,8 @@ extern crate ndarray;
 
 pub mod features;
 pub mod preprocess;
-pub mod weak_classifier;
 mod util;
+pub mod weak_classifier;
 
 use features::HaarFeature;
 use weak_classifier::WeakClassifier;

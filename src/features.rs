@@ -109,23 +109,35 @@ impl HaarFeature {
             }
             HaarFeatureType::TwoHorizontal => {
                 rects.push((
-                    Rectangle::new((self.x + self.w, self.y), (self.x + 2 * self.w, self.y + self.h)),
+                    Rectangle::new(
+                        (self.x + self.w, self.y),
+                        (self.x + 2 * self.w, self.y + self.h),
+                    ),
                     !self.tl_sign,
                 ));
             }
             HaarFeatureType::ThreeHorizontal => {
                 rects.push((
-                    Rectangle::new((self.x + self.w, self.y), (self.x + 2 * self.w, self.y + self.h)),
+                    Rectangle::new(
+                        (self.x + self.w, self.y),
+                        (self.x + 2 * self.w, self.y + self.h),
+                    ),
                     !self.tl_sign,
                 ));
                 rects.push((
-                    Rectangle::new((self.x + 2 * self.w, self.y), (self.x + 3 * self.w, self.y + self.h)),
+                    Rectangle::new(
+                        (self.x + 2 * self.w, self.y),
+                        (self.x + 3 * self.w, self.y + self.h),
+                    ),
                     self.tl_sign,
                 ));
             }
             HaarFeatureType::TwoByTwo => {
                 rects.push((
-                    Rectangle::new((self.x + self.w, self.y), (self.x + 2 * self.w, self.y + self.h)),
+                    Rectangle::new(
+                        (self.x + self.w, self.y),
+                        (self.x + 2 * self.w, self.y + self.h),
+                    ),
                     !self.tl_sign,
                 ));
                 rects.push((
@@ -199,9 +211,9 @@ pub fn init_haar_features(minw: usize, minh: usize, maxw: usize, maxh: usize) ->
 // use ::preprocess::compute_integral_image;
 #[cfg(test)]
 mod tests {
+    use super::*;
     use crate::preprocess::compute_integral_image;
     use ndarray::Array;
-    use super::*;
 
     #[test]
     fn two_vert_evaluates_correctly() {
