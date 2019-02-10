@@ -11,9 +11,9 @@ pub struct Rectangle {
 
 impl Rectangle {
     pub fn new(p1: (usize, usize), p2: (usize, usize)) -> Rectangle {
+        assert!(p1.0 <= 64 && p1.1 <= 64 && p2.0 <= 64 && p2.1 <= 64);
         assert!(p1.0 <= p2.0);
         assert!(p1.1 <= p2.1);
-        assert!(p1.0 <= 64 && p1.1 <= 64 && p2.0 <= 64 && p2.1 <= 64);
 
         Rectangle {
             xmin: p1.0,

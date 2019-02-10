@@ -1,23 +1,43 @@
 /// Functions for loading the pre-processing data
 extern crate image;
 
-use super::Matrix;
+use super::{Classification, Matrix};
 use image::DynamicImage;
 use ndarray::Array;
 use std::fs;
 
-/// Load input faces and backgrounds into matrices
+/// Take two lists of integral images and flatten them into a list of (img, label) tuples
+fn flatten_to_classlist(
+    integral_faces: Vec<Matrix>,
+    integral_backgrounds: Vec<Matrix>,
+) -> Vec<(Matrix, super::Classification)> {
+    let mut out = Vec::with_capacity(integral_faces.len() + integral_backgrounds.len());
+
+    for i in integral_faces {
+        out.push((i, super::Classification::Face));
+    }
+    for i in integral_backgrounds {
+        out.push((i, super::Classification::NonFace));
+    }
+
+    out
+}
+
 pub fn load_and_preprocess_data(
     faces_dir: &str,
     background_dir: &str,
-) -> (Vec<Matrix>, Vec<Matrix>) {
+) -> (Vec<(Matrix, Classification)>, usize, usize) {
     let faces = load_imgs_from_dir(faces_dir);
     let backgrounds = load_imgs_from_dir(background_dir);
 
     let integral_faces = compute_integral_images(faces);
     let integral_backgrounds = compute_integral_images(backgrounds);
 
-    (integral_faces, integral_backgrounds)
+    let (nfaces, nbackgrounds) = (integral_faces.len(), integral_backgrounds.len());
+
+    let flattened = flatten_to_classlist(integral_faces, integral_backgrounds);
+
+    (flattened, nfaces, nbackgrounds)
 }
 
 /// Load an opened image into a matrix

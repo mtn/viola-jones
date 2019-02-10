@@ -167,9 +167,9 @@ pub fn init_haar_features(minw: usize, minh: usize, maxw: usize, maxh: usize) ->
     let mut haar_features = Vec::new();
     for w in minw..=maxw {
         for h in minh..=maxh {
-            for x in 0..=(maxw - w) {
-                for y in 0..=(maxh - h) {
-                    if x + 2 * w <= maxw {
+            for x in 0..(maxw - w) {
+                for y in 0..(maxh - h) {
+                    if x + 2 * w < maxw {
                         haar_features.push(HaarFeature::new(
                             HaarFeatureType::TwoHorizontal,
                             w,
@@ -178,7 +178,7 @@ pub fn init_haar_features(minw: usize, minh: usize, maxw: usize, maxh: usize) ->
                             y,
                         ));
                     }
-                    if y + 2 * h <= maxh {
+                    if y + 2 * h < maxh {
                         haar_features.push(HaarFeature::new(
                             HaarFeatureType::TwoVertical,
                             w,
@@ -187,7 +187,7 @@ pub fn init_haar_features(minw: usize, minh: usize, maxw: usize, maxh: usize) ->
                             y,
                         ));
                     }
-                    if x + 3 * w <= maxw {
+                    if x + 3 * w < maxw {
                         haar_features.push(HaarFeature::new(
                             HaarFeatureType::ThreeHorizontal,
                             w,
@@ -196,7 +196,7 @@ pub fn init_haar_features(minw: usize, minh: usize, maxw: usize, maxh: usize) ->
                             y,
                         ));
                     }
-                    if x + 2 * w <= maxw && y + 2 * h < maxh {
+                    if x + 2 * w < maxw && y + 2 * h < maxh {
                         haar_features.push(HaarFeature::new(HaarFeatureType::TwoByTwo, w, h, x, y));
                     }
                 }
