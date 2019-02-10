@@ -2,15 +2,15 @@
 use super::Matrix;
 
 #[derive(Debug)]
-pub struct Rectangle {
+pub struct Rectangle<'a> {
     pub xmin: usize,
     pub xmax: usize,
     pub ymin: usize,
     pub ymax: usize,
 }
 
-impl Rectangle {
-    pub fn new(p1: (usize, usize), p2: (usize, usize)) -> Rectangle {
+impl<'a> Rectangle<'a> {
+    pub fn new(p1: (usize, usize), p2: (usize, usize)) -> Rectangle<'a> {
         assert!(p1.0 <= p2.0);
         assert!(p1.1 <= p2.1);
 
@@ -25,22 +25,7 @@ impl Rectangle {
 
 /// Compute the area of a block within an (assumed) padded integral image
 pub fn compute_area(img: &Matrix, r: &Rectangle) -> u32 {
-    if r.xmax - r.xmin == 0 || r.ymax - r.ymin == 0 {
-        return 0;
-    }
-
-    // println!("{} {} {} {}", img[[x+w, y+h]] , img[[x, y]] , img[[x, y+h]] , img[[x+w, y]]);
-    // println!("hi");
-    // println!("r is {:?}", r);
-    println!(
-        "{} {} {} {}",
-        img[[r.xmax, r.ymax]],
-        img[[r.xmin, r.ymin]],
-        img[[r.xmin, r.ymax]],
-        img[[r.xmax, r.ymin]]
-    );
     img[[r.xmax, r.ymax]] + img[[r.xmin, r.ymin]] - img[[r.xmin, r.ymax]] - img[[r.xmax, r.ymin]]
-    // img[[x+w, y+h]] + img[[x, y]] - img[[x, y+h]] - img[[x+w, y]]
 }
 
 #[cfg(test)]
@@ -60,6 +45,7 @@ mod tests {
             .into_shape((5, 5))
             .expect("Failed to transform input array into matrix");
 
+        assert!(compute_area(&img, &Rectangle::new((2, 2), (2, 2))) == 0);
         assert!(compute_area(&img, &Rectangle::new((0, 0), (2, 2))) == 14);
         assert!(compute_area(&img, &Rectangle::new((0, 0), (4, 4))) == 136);
         assert!(compute_area(&img, &Rectangle::new((1, 1), (4, 4))) == 99);
