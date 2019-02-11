@@ -47,13 +47,15 @@ impl Learner {
             }
         }
 
-        // Note that the minimum window dimensions are set arbitrarily to 8x8
+        // Note that the stride and step size are arbitrarily set to 3 and 3.
+        // This pretty dramatically cuts down training time by restricting the search
+        // space.
         let (maxw, maxh) = training_inputs[0].0.dim();
         Learner {
             num_weak_classifiers,
             training_inputs,
             weights,
-            haar_features: features::init_haar_features(8, 8, maxw, maxh),
+            haar_features: features::init_haar_features(maxw, maxh, 3, 3),
             weak_classifiers: Vec::new(),
         }
     }
@@ -62,6 +64,7 @@ impl Learner {
         assert!(self.training_inputs.len() == 4000);
 
         println!("Made it to the start of training");
+        // unimplemented!();
 
         let pb = ProgressBar::new(self.training_inputs.len() as u64);
         pb.set_style(

@@ -163,12 +163,17 @@ impl HaarFeature {
 
 /// Create a set of features that can be applies to every training input image.
 /// Assumes that all training examples are the same shape.
-pub fn init_haar_features(minw: usize, minh: usize, maxw: usize, maxh: usize) -> Vec<HaarFeature> {
+pub fn init_haar_features(
+    maxw: usize,
+    maxh: usize,
+    stride: usize,
+    step: usize,
+) -> Vec<HaarFeature> {
     let mut haar_features = Vec::new();
-    for w in minw..=maxw {
-        for h in minh..=maxh {
-            for x in 0..(maxw - w) {
-                for y in 0..(maxh - h) {
+    for w in (1..=maxw).step_by(step) {
+        for h in (1..=maxh).step_by(step) {
+            for x in (0..(maxw - w)).step_by(stride) {
+                for y in (0..(maxh - h)).step_by(stride) {
                     if x + 2 * w < maxw {
                         haar_features.push(HaarFeature::new(
                             HaarFeatureType::TwoHorizontal,

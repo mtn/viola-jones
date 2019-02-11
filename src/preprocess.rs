@@ -177,5 +177,25 @@ mod tests {
 
         assert!(int_inp_mat.dim() == (5, 5));
         assert!(int_inp_mat == exp_mat);
+
+        let inp: Vec<i32> = vec![
+            5, 4, 3, 2, 1, 4, 3, 2, 1, 5, 3, 2, 1, 5, 4, 2, 1, 5, 4, 3, 1, 5, 4, 3, 2,
+        ];
+        let exp: Vec<i32> = vec![
+            0, 0, 0, 0, 0, 0, 0, 5, 9, 12, 14, 15, 0, 9, 16, 21, 24, 30, 0, 12, 21, 27, 35, 45, 0,
+            14, 24, 35, 47, 60, 0, 15, 30, 45, 60, 75,
+        ];
+
+        let inp_mat = Array::from_vec(inp)
+            .into_shape((5, 5))
+            .expect("Failed to transform input array into matrix");
+        let exp_mat = Array::from_vec(exp)
+            .into_shape((6, 6))
+            .expect("Failed to transform input array into matrix");
+
+        let int_inp_mat = compute_integral_image(&inp_mat);
+
+        assert!(int_inp_mat.dim() == (6, 6));
+        assert!(int_inp_mat == exp_mat);
     }
 }
