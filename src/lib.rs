@@ -1,81 +1,69 @@
+#![feature(type_alias_enum_variants)]
+
 extern crate indicatif;
 extern crate ndarray;
 
-pub mod features;
-pub mod preprocess;
+mod features;
+mod preprocess;
 mod util;
-pub mod weak_classifier;
+mod weak_classifier;
 
 use features::HaarFeature;
-use indicatif::{ProgressBar, ProgressStyle};
+// use indicatif::{ProgressBar, ProgressStyle};
 use weak_classifier::WeakClassifier;
 
 pub type Matrix = ndarray::Array2<i32>;
 
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum Classification {
     Face,
     NonFace,
 }
 
 pub struct Learner {
-    num_weak_classifiers: u32,
-
     training_inputs: Vec<(Matrix, Classification)>,
-    // faces: Vec<Matrix>,
-    // backgrounds: Vec<Matrix>,
     haar_features: Vec<HaarFeature>,
 
-    // Weights are kept separate by class for convenience (faces == positive)
-    weights: Vec<f32>,
-    // face_weights: Vec<f32>,
-    // background_weights: Vec<f32>,
-    weak_classifiers: Vec<WeakClassifier>,
+    distribution: Vec<f32>,
 }
 
 impl Learner {
-    pub fn new(faces_dir: &str, background_dir: &str, num_weak_classifiers: u32) -> Learner {
+    pub fn new(faces_dir: &str, background_dir: &str) -> Learner {
         // Load the data (faces followed by background, in tuples with class labels)
         let (training_inputs, nfaces, nbackgrounds) =
             preprocess::load_and_preprocess_data(faces_dir, background_dir);
 
-        let mut weights = Vec::with_capacity(nfaces + nbackgrounds);
-        for (i, w) in weights.iter_mut().enumerate() {
-            if i < nfaces {
-                *w = 1. / (2. * nfaces as f32);
-            } else {
-                *w = 1. / (2. * nbackgrounds as f32);
-            }
-        }
-
-        // Note that the stride and step size are arbitrarily set to 3 and 3.
+        // Note that the stride and step size are arbitrarily set to 4 and 4.
         // This pretty dramatically cuts down training time by restricting the search
         // space.
         let (maxw, maxh) = training_inputs[0].0.dim();
         Learner {
-            num_weak_classifiers,
             training_inputs,
-            weights,
-            haar_features: features::init_haar_features(maxw, maxh, 3, 3),
-            weak_classifiers: Vec::new(),
+            haar_features: features::init_haar_features(maxw, maxh, 4, 4),
+            distribution: vec![1. / (nbackgrounds + nfaces) as f32; nfaces + nbackgrounds],
         }
     }
-
     pub fn train(&mut self) {
         assert!(self.training_inputs.len() == 4000);
 
         println!("Made it to the start of training");
         // unimplemented!();
-
-        let pb = ProgressBar::new(self.training_inputs.len() as u64);
-        pb.set_style(
-            ProgressStyle::default_bar().template("[{elapsed_precise}] {wide_bar} ({eta})"),
+        WeakClassifier::get_optimals(
+            &self.haar_features,
+            &self.training_inputs,
+            &mut self.distribution,
         );
-        for (f, _) in &self.training_inputs {
-            for ff in &self.haar_features {
-                ff.evaluate(&f);
-            }
-            pb.inc(1);
-        }
-        pb.finish_with_message("done");
+
+        // let pb = ProgressBar::new(self.training_inputs.len() as u64);
+        // pb.set_style(
+        //     ProgressStyle::default_bar().template("[{elapsed_precise}] {wide_bar} ({eta})"),
+        // );
+        // for (f, _) in &self.training_inputs {
+        //     for ff in &self.haar_features {
+        //         ff.evaluate(&f);
+        //     }
+        //     pb.inc(1);
+        // }
+        // pb.finish_with_message("done");
     }
 }
