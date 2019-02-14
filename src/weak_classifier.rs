@@ -98,7 +98,7 @@ impl<'a> WeakClassifier<'a> {
         let mut t_pos: f64 = 0.;
         let mut t_neg: f64 = 0.;
         for ((_, label), dist) in training_samples.iter().zip(distribution_t.iter()) {
-            if *label == Classification::Face {
+            if *label== Classification::Face {
                 t_pos += dist;
             } else {
                 t_neg += dist;
@@ -141,12 +141,15 @@ impl<'a> WeakClassifier<'a> {
 
     /// Evaluate the weak classifier on an input image.
     pub fn evaluate(&self, img: &Matrix) -> Classification {
-        let score = self.feature.evaluate(img);
-
-        if self.toggle * score >= self.toggle * self.threshold {
+        if self.evaluate_raw(img) >= self.toggle * self.threshold {
             Classification::Face
         } else {
             Classification::NonFace
         }
+    }
+
+    /// Return the raw score of the evaluated feature.
+    pub fn evaluate_raw(&self, img: &Matrix) -> i32 {
+        self.toggle * self.feature.evaluate(img)
     }
 }

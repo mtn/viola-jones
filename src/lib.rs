@@ -2,6 +2,7 @@
 
 extern crate indicatif;
 extern crate ndarray;
+extern crate rayon;
 
 mod features;
 mod preprocess;
@@ -93,10 +94,7 @@ impl Learner {
     /// Creates a strong classifier from a single round of boosting.
     /// Returns a strong learner/committee.
     fn run_boosting(&mut self) -> StrongClassifier {
-        let mut boosting_classifiers: Vec<WeakClassifier> =
-            Vec::with_capacity(self.max_weak_learners_per_level as usize);
-        let mut weights: Vec<f64> = Vec::with_capacity(self.max_weak_learners_per_level as usize);
-        let mut theta = 0;
+        let mut strong = StrongClassifier::new();
 
         // To avoid getting stuck to do outliers, we limit the number of total weak
         // learners we add to the classifier in a given boosting.
@@ -110,40 +108,40 @@ impl Learner {
             );
 
             let alpha_t = (1. / 2.) * ((1. - best_error) / best_error).ln();
-            weights.push(alpha_t);
+            strong.add_weak_classifier(best_classifier, alpha_t, &self.training_inputs);
 
             // Turn this into a strong learner by itself and return
-            // if best_error == 0. {
-            //     println!("Found a single weak classifier that had 0 error, returning early");
-            //     println!("{:?}", best_classifier);
-            //     return StrongClassifier {
-            //         weights: vec![alpha_t],
-            //         classifiers: vec![best_classifier]
-            //     }
-            // }
+            if best_error == 0. {
+                println!("Found a single weak classifier that had 0 error, returning early");
+                println!("{:?}", strong.classifiers);
+                // TODO update
+                unimplemented!()
+                // return StrongClassifier {
+                //     weights: vec![alpha_t],
+                //     classifiers: vec![best_classifier],
+                // };
+            }
 
             // Update the distribution weights
             let normalization_factor = 2. * (best_error * (1. - best_error)).sqrt();
             for (i, sample) in self.training_inputs.iter().enumerate() {
                 // The classification result multiplies like -1 and 1
-                let classification = best_classifier.evaluate(&sample.0);
+                let classification = strong.classifiers.last().unwrap().evaluate(&sample.0);
                 self.distribution[i] = (self.distribution[i] / normalization_factor)
                     * (classification * sample.1 * -1. * alpha_t).exp();
             }
 
-            boosting_classifiers.push(best_classifier);
+            let (fpr, fnr, overall) = strong.compute_error(&self.training_inputs);
 
-            // Theta is computed here just so we can tell what our FPR and FNR would be
-            // if we stopped right now. It has no other impact on training.
-            // theta = Self::compute_theta(&boosting_classifiers, &weights);
-
-            let mut false_positive_rate = 0;
-            let mut false_negative_rate = 0;
-
-            // println!("Boosting round {}: Currently have {} features with FPR {} and FNR {}", boosting_round);
+            println!("Boosting round {}: Currently have {} weak classifiers with FPR {} and FNR {} and overall error {}", boosting_round, strong.classifiers.len(), fpr, fnr, overall);
         }
 
-        StrongClassifier { weights, classifiers: boosting_classifiers }
+        // TODO fix
+        // StrongClassifier {
+        //     weights,
+        //     classifiers: boosting_classifiers,
+        // }
+        unimplemented!()
     }
 
     pub fn train(&mut self) {
@@ -170,5 +168,30 @@ impl Learner {
         //     pb.inc(1);
         // }
         // pb.finish_with_message("done");
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    // Checks that sums are computed correctly for integral images
+    fn classifications_multiply_correctly() {
+        let mut label = Classification::Face;
+        assert!(label * -1. == -1.);
+
+        let mut classification = Classification::Face;
+        assert!(label * classification * -1. == -1.);
+        classification = Classification::NonFace;
+        assert!(label * classification * -1. == 1.);
+
+        label = Classification::NonFace;
+        assert!(label * -1. == 1.);
+
+        classification = Classification::Face;
+        assert!(label * classification * -1. == 1.);
+        classification = Classification::NonFace;
+        assert!(label * classification * -1. == -1.);
     }
 }
