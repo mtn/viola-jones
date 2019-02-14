@@ -4,7 +4,7 @@ type WeakClassifier<'a> = super::weak_classifier::WeakClassifier<'a>;
 type Classification = super::Classification;
 type Matrix = ndarray::Array2<i64>;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct StrongClassifier<'a> {
     pub classifiers: Vec<WeakClassifier<'a>>,
     weights: Vec<f64>,
@@ -67,8 +67,6 @@ impl<'a> StrongClassifier<'a> {
     /// Sets the threshold for this strong classifier (assuming the other fields have
     /// been initialized). Returns a copy of the updated weight value.
     fn update_threshold(&mut self, input_samples: &Vec<(Matrix, Classification)>) -> f64 {
-        let mut min_score = f64::INFINITY;
-
         // Compute the minimal score of a face, and set that to be the threshold
         let mut face_scores = Vec::new();
         for (img, classification) in input_samples {
@@ -89,7 +87,7 @@ impl<'a> StrongClassifier<'a> {
         // TODO make sure the vector is long enough
         self.threshold = face_scores[2];
 
-        min_score
+        self.threshold
     }
 
     /// Adds a weak classifier to the ensemble (taking ownership of it), and its

@@ -6,7 +6,7 @@ type Toggle = super::features::Sign;
 type Matrix = ndarray::Array2<i64>;
 type Classification = super::Classification;
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Copy, Debug)]
 pub struct WeakClassifier<'a> {
     feature: &'a Feature,
     toggle: Toggle,
@@ -37,16 +37,6 @@ impl<'a> WeakClassifier<'a> {
         }
         scores.sort_by(|a, b| a.0.cmp(&b.0));
 
-        // Initialize s_pos, best_error, best_toggle, and best_threshold.
-        // This is just an incremental way of computing the weighted sum from the paper.
-        // let (a, b) = (s_pos + t_neg - s_neg, s_neg + t_pos - s_pos);
-        // let (mut best_error, mut best_toggle) = if a <= b {
-        //     (a, Toggle::Positive)
-        // } else {
-        //     (b, Toggle::Negative)
-        // };
-        // let mut best_threshold = scores[0].0;
-
         let mut best_threshold = 0;
         let mut best_toggle = Toggle::Positive;
         let mut best_error = 2.;
@@ -73,7 +63,6 @@ impl<'a> WeakClassifier<'a> {
                 };
             }
         }
-        // assert!(false);
 
         (
             WeakClassifier::new(feature, best_threshold, best_toggle),
@@ -106,7 +95,6 @@ impl<'a> WeakClassifier<'a> {
                 t_neg += dist;
             }
         }
-        // println!("tpos and tneg computed as {} + {} = {}", t_pos, t_neg, t_pos + t_neg);
 
         let mut classifiers: Vec<(WeakClassifier, f64)> = Vec::with_capacity(features.len());
         for feature in features {
