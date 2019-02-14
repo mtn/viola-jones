@@ -17,7 +17,7 @@ use strong_classifier::StrongClassifier;
 use weak_classifier::WeakClassifier;
 // use indicatif::{ProgressBar, ProgressStyle};
 
-pub type Matrix = ndarray::Array2<i32>;
+pub type Matrix = ndarray::Array2<i64>;
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum Classification {
@@ -70,14 +70,6 @@ impl Learner {
             preprocess::load_and_preprocess_data(faces_dir, background_dir);
 
         let (maxw, maxh) = training_inputs[0].0.dim();
-        // let mut distribution: Vec<f64> = Vec::with_capacity(nfaces + nbackgrounds);
-        // for i in 0..(nfaces + nbackgrounds) {
-        //     if i < nfaces {
-        //         distribution.push(1. / (nbackgrounds + nfaces) as f64);
-        //     } else {
-        //         distribution.push(-1. / (nbackgrounds + nfaces) as f64);
-        //     }
-        // }
 
         // Note that the stride and step size are arbitrarily set to 4 and 4.
         // This pretty dramatically cuts down training time by restricting the search
@@ -86,7 +78,7 @@ impl Learner {
             max_weak_learners_per_level,
             max_cascade_depth,
             training_inputs,
-            haar_features: features::init_haar_features(maxw, maxh, 8, 8),
+            haar_features: features::init_haar_features(maxw, maxh, 6, 6),
             distribution: vec![1. / (nbackgrounds + nfaces) as f64; nfaces + nbackgrounds],
         }
     }
@@ -98,16 +90,21 @@ impl Learner {
 
         // To avoid getting stuck to do outliers, we limit the number of total weak
         // learners we add to the classifier in a given boosting.
-        for boosting_round in 0..self.max_weak_learners_per_level {
-            println!("In boosting round {}", boosting_round);
-
+        let mut boosting_round = 0;
+        loop {
+            boosting_round += 1;
+            // for boosting_round in 0..self.max_weak_learners_per_level {
             let (best_classifier, best_error): (WeakClassifier, f64) = WeakClassifier::best_stump(
                 &self.haar_features,
                 &self.training_inputs,
                 &mut self.distribution,
             );
 
-            let alpha_t = (1. / 2.) * ((1. - best_error) / best_error).ln();
+            let computed_err =
+                best_classifier.compute_error(&self.training_inputs, &self.distribution);
+            assert!(best_error - computed_err < 0.001);
+
+            let alpha_t = (0.5) * ((1. - best_error) / best_error).ln();
             strong.add_weak_classifier(best_classifier, alpha_t, &self.training_inputs);
 
             // Turn this into a strong learner by itself and return
@@ -123,17 +120,42 @@ impl Learner {
             }
 
             // Update the distribution weights
-            let normalization_factor = 2. * (best_error * (1. - best_error)).sqrt();
+            // let normalization_factor: f64 = 2. * (best_error * (1. - best_error)).sqrt();
+            let mut newtot = 0.;
             for (i, sample) in self.training_inputs.iter().enumerate() {
                 // The classification result multiplies like -1 and 1
                 let classification = strong.classifiers.last().unwrap().evaluate(&sample.0);
-                self.distribution[i] = (self.distribution[i] / normalization_factor)
-                    * (classification * sample.1 * -1. * alpha_t).exp();
+                self.distribution[i] =
+                    (self.distribution[i]) * (classification * sample.1 * -1. * alpha_t).exp();
+                newtot += self.distribution[i];
             }
+
+            self.distribution = self.distribution.iter().map(|x| x / newtot).collect();
 
             let (fpr, fnr, overall) = strong.compute_error(&self.training_inputs);
 
-            println!("Boosting round {}: Currently have {} weak classifiers with FPR {} and FNR {} and overall error {}", boosting_round, strong.classifiers.len(), fpr, fnr, overall);
+            println!("Finished boosting round {}", boosting_round);
+            println!(
+                "Currently have {} weak classifiers with FPR {} and FNR {} and overall error {}",
+                strong.classifiers.len(),
+                fpr,
+                fnr,
+                overall
+            );
+
+            if overall <= 0.3 {
+                println!("{:?}", strong);
+                // let mut right = 0;
+                // for (sample, label) in &self.training_inputs {
+                //     let classification = strong.evaluate(&sample);
+                //     println!("{:?} {:?}", classification, label);
+                //     if classification == *label {
+                //         right += 1;
+                //     }
+                // }
+                // println!("{} / {} were right", right, self.training_inputs.len());
+                break;
+            }
         }
 
         // TODO fix

@@ -46,7 +46,7 @@ fn img_as_matrix(img: DynamicImage) -> Matrix {
     let raw_pixels = img.raw_pixels();
     assert!(raw_pixels.len() == 64 * 64 * 3);
 
-    let mut out_pixels: Vec<i32> = Vec::with_capacity(64 * 64);
+    let mut out_pixels: Vec<i64> = Vec::with_capacity(64 * 64);
     // Average over the colors (doing integer division)
     for i in 0..(64 * 64) {
         let start_ind = i * 3;
@@ -55,7 +55,7 @@ fn img_as_matrix(img: DynamicImage) -> Matrix {
         out_px += raw_pixels[start_ind + 1] / 3;
         out_px += raw_pixels[start_ind + 2] / 3;
 
-        out_pixels.push(out_px as i32);
+        out_pixels.push(out_px as i64);
     }
 
     let pixel_arr = Array::from_vec(out_pixels);
@@ -161,8 +161,8 @@ mod tests {
     #[test]
     // Checks that the integral image is being computed correctly on a simple 4x4 example
     fn integral_images_computed_correctly() {
-        let inp: Vec<i32> = vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16];
-        let exp: Vec<i32> = vec![
+        let inp: Vec<i64> = vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16];
+        let exp: Vec<i64> = vec![
             0, 0, 0, 0, 0, 0, 1, 3, 6, 10, 0, 6, 14, 24, 36, 0, 15, 33, 54, 78, 0, 28, 60, 96, 136,
         ];
 
@@ -178,10 +178,10 @@ mod tests {
         assert!(int_inp_mat.dim() == (5, 5));
         assert!(int_inp_mat == exp_mat);
 
-        let inp: Vec<i32> = vec![
+        let inp: Vec<i64> = vec![
             5, 4, 3, 2, 1, 4, 3, 2, 1, 5, 3, 2, 1, 5, 4, 2, 1, 5, 4, 3, 1, 5, 4, 3, 2,
         ];
-        let exp: Vec<i32> = vec![
+        let exp: Vec<i64> = vec![
             0, 0, 0, 0, 0, 0, 0, 5, 9, 12, 14, 15, 0, 9, 16, 21, 24, 30, 0, 12, 21, 27, 35, 45, 0,
             14, 24, 35, 47, 60, 0, 15, 30, 45, 60, 75,
         ];

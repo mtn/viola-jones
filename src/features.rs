@@ -39,10 +39,10 @@ impl Not for Sign {
     }
 }
 
-impl Mul<i32> for Sign {
-    type Output = i32;
+impl Mul<i64> for Sign {
+    type Output = i64;
 
-    fn mul(self, rhs: i32) -> i32 {
+    fn mul(self, rhs: i64) -> i64 {
         match self {
             Sign::Positive => rhs,
             Sign::Negative => -1 * rhs,
@@ -79,7 +79,7 @@ impl HaarFeature {
 
     /// Evaluate the Haar feature on the integral image (in constant time).
     /// Bound are assumed to be correct.
-    pub fn evaluate(&self, img: &Matrix) -> i32 {
+    pub fn evaluate(&self, img: &Matrix) -> i64 {
         let rects = self.to_rectangles();
         let mut score = 0;
 

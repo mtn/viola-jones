@@ -3,18 +3,18 @@ use std::f64;
 
 type Feature = super::features::HaarFeature;
 type Toggle = super::features::Sign;
-type Matrix = ndarray::Array2<i32>;
+type Matrix = ndarray::Array2<i64>;
 type Classification = super::Classification;
 
 #[derive(Clone, Debug)]
 pub struct WeakClassifier<'a> {
     feature: &'a Feature,
     toggle: Toggle,
-    threshold: i32,
+    threshold: i64,
 }
 
 impl<'a> WeakClassifier<'a> {
-    pub fn new(feature: &'a Feature, threshold: i32, toggle: Toggle) -> WeakClassifier {
+    pub fn new(feature: &'a Feature, threshold: i64, toggle: Toggle) -> WeakClassifier {
         WeakClassifier {
             feature,
             threshold,
@@ -30,7 +30,7 @@ impl<'a> WeakClassifier<'a> {
         t_neg: f64,
     ) -> (WeakClassifier<'a>, f64) {
         // A vector of tuples (score, distribution, true label)
-        let mut scores: Vec<(i32, f64, Classification)> =
+        let mut scores: Vec<(i64, f64, Classification)> =
             Vec::with_capacity(training_samples.len());
         for (sample, dist) in training_samples.iter().zip(distribution_t.iter()) {
             scores.push((feature.evaluate(&sample.0), *dist, sample.1));
@@ -39,28 +39,29 @@ impl<'a> WeakClassifier<'a> {
 
         // Initialize s_pos, best_error, best_toggle, and best_threshold.
         // This is just an incremental way of computing the weighted sum from the paper.
-        let (mut s_pos, mut s_neg): (f64, f64) = if distribution_t[0] < 0. {
-            (0., 0.)
-        } else {
-            (distribution_t[0], distribution_t[0])
-        };
+        // let (a, b) = (s_pos + t_neg - s_neg, s_neg + t_pos - s_pos);
+        // let (mut best_error, mut best_toggle) = if a <= b {
+        //     (a, Toggle::Positive)
+        // } else {
+        //     (b, Toggle::Negative)
+        // };
+        // let mut best_threshold = scores[0].0;
 
-        let (a, b) = (s_pos + t_neg - s_neg, s_neg + t_pos - s_pos);
-        let (mut best_error, mut best_toggle) = if a <= b {
-            (a, Toggle::Positive)
-        } else {
-            (b, Toggle::Negative)
-        };
-        let mut best_threshold = scores[0].0;
-
+        let mut best_threshold = 0;
+        let mut best_toggle = Toggle::Positive;
+        let mut best_error = 2.;
+        let mut s_pos = 0.;
+        let mut s_neg = 0.;
         for (score, dist, label) in scores.iter().skip(1) {
             if *label == Classification::Face {
                 s_pos += dist;
             } else {
                 s_neg += dist;
             }
+            // println!("spos {} sneg {} sum {}", s_pos, s_neg, s_pos + s_neg);
 
             let (a, b) = (s_pos + t_neg - s_neg, s_neg + t_pos - s_pos);
+            // assert!((t_pos + t_neg - 1.).abs() < 0.0001);
             let error = a.min(b);
             if error < best_error {
                 best_error = error;
@@ -72,6 +73,7 @@ impl<'a> WeakClassifier<'a> {
                 };
             }
         }
+        // assert!(false);
 
         (
             WeakClassifier::new(feature, best_threshold, best_toggle),
@@ -98,12 +100,13 @@ impl<'a> WeakClassifier<'a> {
         let mut t_pos: f64 = 0.;
         let mut t_neg: f64 = 0.;
         for ((_, label), dist) in training_samples.iter().zip(distribution_t.iter()) {
-            if *label== Classification::Face {
+            if *label == Classification::Face {
                 t_pos += dist;
             } else {
                 t_neg += dist;
             }
         }
+        // println!("tpos and tneg computed as {} + {} = {}", t_pos, t_neg, t_pos + t_neg);
 
         let mut classifiers: Vec<(WeakClassifier, f64)> = Vec::with_capacity(features.len());
         for feature in features {
@@ -141,7 +144,7 @@ impl<'a> WeakClassifier<'a> {
 
     /// Evaluate the weak classifier on an input image.
     pub fn evaluate(&self, img: &Matrix) -> Classification {
-        if self.evaluate_raw(img) >= self.toggle * self.threshold {
+        if self.evaluate_raw(img) >= 0 {
             Classification::Face
         } else {
             Classification::NonFace
@@ -149,7 +152,26 @@ impl<'a> WeakClassifier<'a> {
     }
 
     /// Return the raw score of the evaluated feature.
-    pub fn evaluate_raw(&self, img: &Matrix) -> i32 {
-        self.toggle * self.feature.evaluate(img)
+    pub fn evaluate_raw(&self, img: &Matrix) -> i64 {
+        self.toggle * (self.feature.evaluate(img) - self.threshold)
+    }
+
+    /// Computes the weighted error of the weak classifier
+    pub fn compute_error(
+        &self,
+        input_samples: &Vec<(Matrix, Classification)>,
+        weights: &Vec<f64>,
+    ) -> f64 {
+        let mut weighted_error = 0.;
+
+        for ((sample, label), weight) in input_samples.iter().zip(weights.iter()) {
+            let classification = self.evaluate(sample);
+
+            if classification != *label {
+                weighted_error += *weight;
+            }
+        }
+
+        weighted_error
     }
 }

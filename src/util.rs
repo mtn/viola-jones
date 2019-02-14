@@ -25,7 +25,7 @@ impl Rectangle {
 }
 
 /// Compute the area of a block within an (assumed) padded integral image
-pub fn compute_area(img: &Matrix, r: &Rectangle) -> i32 {
+pub fn compute_area(img: &Matrix, r: &Rectangle) -> i64 {
     img[[r.ymax, r.xmax]] + img[[r.ymin, r.xmin]] - img[[r.ymin, r.xmax]] - img[[r.ymax, r.xmin]]
 }
 
@@ -38,7 +38,7 @@ mod tests {
     // Checks that sums are computed correctly for integral images
     fn areas_computed_correctly() {
         // Integral img from [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16]
-        let inp: Vec<i32> = vec![
+        let inp: Vec<i64> = vec![
             0, 0, 0, 0, 0, 0, 1, 3, 6, 10, 0, 6, 14, 24, 36, 0, 15, 33, 54, 78, 0, 28, 60, 96, 136,
         ];
 

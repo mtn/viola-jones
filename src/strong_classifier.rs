@@ -1,7 +1,10 @@
+use std::f64;
+
 type WeakClassifier<'a> = super::weak_classifier::WeakClassifier<'a>;
 type Classification = super::Classification;
-type Matrix = ndarray::Array2<i32>;
+type Matrix = ndarray::Array2<i64>;
 
+#[derive(Debug)]
 pub struct StrongClassifier<'a> {
     pub classifiers: Vec<WeakClassifier<'a>>,
     weights: Vec<f64>,
@@ -21,7 +24,7 @@ impl<'a> StrongClassifier<'a> {
 
     /// Makes a weighted classification prediction using the ensemble of classifiers.
     pub fn evaluate(&self, img: &Matrix) -> Classification {
-        if (self.evaluate_raw(img) - self.threshold).is_sign_positive() {
+        if self.evaluate_raw(img) - self.threshold >= 0. {
             Classification::Face
         } else {
             Classification::NonFace
@@ -64,9 +67,10 @@ impl<'a> StrongClassifier<'a> {
     /// Sets the threshold for this strong classifier (assuming the other fields have
     /// been initialized). Returns a copy of the updated weight value.
     fn update_threshold(&mut self, input_samples: &Vec<(Matrix, Classification)>) -> f64 {
-        let mut min_score = 0.;
+        let mut min_score = f64::INFINITY;
 
         // Compute the minimal score of a face, and set that to be the threshold
+        let mut face_scores = Vec::new();
         for (img, classification) in input_samples {
             if *classification == Classification::NonFace {
                 continue;
@@ -77,12 +81,13 @@ impl<'a> StrongClassifier<'a> {
                 score += weight * classifier.evaluate_raw(img) as f64;
             }
 
-            if score <= min_score {
-                min_score = score;
-            }
+            face_scores.push(score);
         }
 
-        self.threshold = min_score;
+        face_scores.sort_by(|a, b| a.partial_cmp(&b).unwrap());
+
+        // TODO make sure the vector is long enough
+        self.threshold = face_scores[2];
 
         min_score
     }
