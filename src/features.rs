@@ -7,7 +7,7 @@ use std::ops::{Mul, Not};
 #[derive(Debug)]
 pub struct HaarFeature {
     feature_type: HaarFeatureType,
-    tl_sign: Sign,
+    pub tl_sign: Sign,
     w: usize,
     h: usize,
     x: usize,
@@ -22,7 +22,7 @@ pub enum HaarFeatureType {
     TwoByTwo,
 }
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum Sign {
     Positive,
     Negative,
@@ -77,8 +77,8 @@ impl HaarFeature {
         }
     }
 
-    /// Evaluate the Haar feature on the integral image.
-    /// No bounds checking is done up-front.
+    /// Evaluate the Haar feature on the integral image (in constant time).
+    /// Bound are assumed to be correct.
     pub fn evaluate(&self, img: &Matrix) -> i32 {
         let rects = self.to_rectangles();
         let mut score = 0;

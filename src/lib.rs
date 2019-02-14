@@ -5,12 +5,16 @@ extern crate ndarray;
 
 mod features;
 mod preprocess;
+mod strong_classifier;
 mod util;
 mod weak_classifier;
 
 use features::HaarFeature;
-// use indicatif::{ProgressBar, ProgressStyle};
+use std::f64;
+use std::ops::Mul;
+use strong_classifier::StrongClassifier;
 use weak_classifier::WeakClassifier;
+// use indicatif::{ProgressBar, ProgressStyle};
 
 pub type Matrix = ndarray::Array2<i32>;
 
@@ -20,39 +24,140 @@ pub enum Classification {
     NonFace,
 }
 
+impl Mul<f64> for Classification {
+    type Output = f64;
+
+    fn mul(self, rhs: f64) -> f64 {
+        match self {
+            Classification::Face => rhs,
+            Classification::NonFace => -1. * rhs,
+        }
+    }
+}
+
+impl Mul for Classification {
+    type Output = f64;
+
+    fn mul(self, rhs: Classification) -> f64 {
+        match self {
+            Classification::Face => rhs * 1f64,
+            Classification::NonFace => rhs * -1f64,
+        }
+    }
+}
+
 pub struct Learner {
+    max_weak_learners_per_level: u8,
+    max_cascade_depth: u8,
+
     training_inputs: Vec<(Matrix, Classification)>,
+
     haar_features: Vec<HaarFeature>,
 
-    distribution: Vec<f32>,
+    distribution: Vec<f64>,
 }
 
 impl Learner {
-    pub fn new(faces_dir: &str, background_dir: &str) -> Learner {
+    pub fn new(
+        faces_dir: &str,
+        background_dir: &str,
+        max_weak_learners_per_level: u8,
+        max_cascade_depth: u8,
+    ) -> Learner {
         // Load the data (faces followed by background, in tuples with class labels)
         let (training_inputs, nfaces, nbackgrounds) =
             preprocess::load_and_preprocess_data(faces_dir, background_dir);
 
+        let (maxw, maxh) = training_inputs[0].0.dim();
+        // let mut distribution: Vec<f64> = Vec::with_capacity(nfaces + nbackgrounds);
+        // for i in 0..(nfaces + nbackgrounds) {
+        //     if i < nfaces {
+        //         distribution.push(1. / (nbackgrounds + nfaces) as f64);
+        //     } else {
+        //         distribution.push(-1. / (nbackgrounds + nfaces) as f64);
+        //     }
+        // }
+
         // Note that the stride and step size are arbitrarily set to 4 and 4.
         // This pretty dramatically cuts down training time by restricting the search
         // space.
-        let (maxw, maxh) = training_inputs[0].0.dim();
         Learner {
+            max_weak_learners_per_level,
+            max_cascade_depth,
             training_inputs,
-            haar_features: features::init_haar_features(maxw, maxh, 4, 4),
-            distribution: vec![1. / (nbackgrounds + nfaces) as f32; nfaces + nbackgrounds],
+            haar_features: features::init_haar_features(maxw, maxh, 8, 8),
+            distribution: vec![1. / (nbackgrounds + nfaces) as f64; nfaces + nbackgrounds],
         }
     }
+
+    /// Creates a strong classifier from a single round of boosting.
+    /// Returns a strong learner/committee.
+    fn run_boosting(&mut self) -> StrongClassifier {
+        let mut boosting_classifiers: Vec<WeakClassifier> =
+            Vec::with_capacity(self.max_weak_learners_per_level as usize);
+        let mut weights: Vec<f64> = Vec::with_capacity(self.max_weak_learners_per_level as usize);
+        let mut theta = 0;
+
+        // To avoid getting stuck to do outliers, we limit the number of total weak
+        // learners we add to the classifier in a given boosting.
+        for boosting_round in 0..self.max_weak_learners_per_level {
+            println!("In boosting round {}", boosting_round);
+
+            let (best_classifier, best_error): (WeakClassifier, f64) = WeakClassifier::best_stump(
+                &self.haar_features,
+                &self.training_inputs,
+                &mut self.distribution,
+            );
+
+            let alpha_t = (1. / 2.) * ((1. - best_error) / best_error).ln();
+            weights.push(alpha_t);
+
+            // Turn this into a strong learner by itself and return
+            // if best_error == 0. {
+            //     println!("Found a single weak classifier that had 0 error, returning early");
+            //     println!("{:?}", best_classifier);
+            //     return StrongClassifier {
+            //         weights: vec![alpha_t],
+            //         classifiers: vec![best_classifier]
+            //     }
+            // }
+
+            // Update the distribution weights
+            let normalization_factor = 2. * (best_error * (1. - best_error)).sqrt();
+            for (i, sample) in self.training_inputs.iter().enumerate() {
+                // The classification result multiplies like -1 and 1
+                let classification = best_classifier.evaluate(&sample.0);
+                self.distribution[i] = (self.distribution[i] / normalization_factor)
+                    * (classification * sample.1 * -1. * alpha_t).exp();
+            }
+
+            boosting_classifiers.push(best_classifier);
+
+            // Theta is computed here just so we can tell what our FPR and FNR would be
+            // if we stopped right now. It has no other impact on training.
+            // theta = Self::compute_theta(&boosting_classifiers, &weights);
+
+            let mut false_positive_rate = 0;
+            let mut false_negative_rate = 0;
+
+            // println!("Boosting round {}: Currently have {} features with FPR {} and FNR {}", boosting_round);
+        }
+
+        StrongClassifier { weights, classifiers: boosting_classifiers }
+    }
+
     pub fn train(&mut self) {
         assert!(self.training_inputs.len() == 4000);
+        println!("Beginning training...");
 
-        println!("Made it to the start of training");
-        // unimplemented!();
-        WeakClassifier::get_optimals(
-            &self.haar_features,
-            &self.training_inputs,
-            &mut self.distribution,
-        );
+        let strong_learners: Vec<StrongClassifier> =
+            Vec::with_capacity(self.max_cascade_depth as usize);
+
+        for cascade_round in 0..self.max_cascade_depth {
+            println!("Starting cascade round {}", cascade_round);
+
+            let classifier: StrongClassifier = self.run_boosting();
+        }
 
         // let pb = ProgressBar::new(self.training_inputs.len() as u64);
         // pb.set_style(
