@@ -7,28 +7,28 @@ type Matrix = ndarray::Array2<i64>;
 type Classification = super::Classification;
 
 #[derive(Clone, Copy, Debug)]
-pub struct WeakClassifier<'a> {
-    feature: &'a Feature,
+pub struct WeakClassifier {
+    feature: Feature,
     toggle: Toggle,
     threshold: i64,
 }
 
-impl<'a> WeakClassifier<'a> {
-    pub fn new(feature: &'a Feature, threshold: i64, toggle: Toggle) -> WeakClassifier {
+impl WeakClassifier {
+    pub fn new(feature: &Feature, threshold: i64, toggle: Toggle) -> WeakClassifier {
         WeakClassifier {
-            feature,
+            feature: *feature,
             threshold,
             toggle,
         }
     }
 
     fn get_optimal(
-        feature: &'a Feature,
+        feature: &Feature,
         training_samples: &Vec<(Matrix, Classification)>,
         distribution_t: &Vec<f64>,
         t_pos: f64,
         t_neg: f64,
-    ) -> (WeakClassifier<'a>, f64) {
+    ) -> (WeakClassifier, f64) {
         // A vector of tuples (score, distribution, true label)
         let mut scores: Vec<(i64, f64, Classification)> =
             Vec::with_capacity(training_samples.len());
@@ -73,13 +73,13 @@ impl<'a> WeakClassifier<'a> {
     /// Finds the optimal (attaining the lowest empirical loss) weak classifier for
     /// each feature, returning a vector of optimal weak classifiers.
     fn get_optimals(
-        features: &'a Vec<Feature>,
+        features: &Vec<Feature>,
         training_samples: &Vec<(Matrix, Classification)>,
         distribution_t: &Vec<f64>,
-    ) -> Vec<(WeakClassifier<'a>, f64)> {
+    ) -> Vec<(WeakClassifier, f64)> {
         assert!(training_samples.len() == distribution_t.len());
 
-        println!("Running a search over {} features...", features.len());
+        println!("Running a search over {} features and {} training samples...", features.len(), training_samples.len());
         let pb = ProgressBar::new(features.len() as u64);
         pb.set_style(
             ProgressStyle::default_bar().template("[{elapsed_precise}] {wide_bar} ({eta})"),
@@ -116,10 +116,10 @@ impl<'a> WeakClassifier<'a> {
 
     /// Returns the best decision stump over the set of optimal stumps.
     pub fn best_stump(
-        features: &'a Vec<Feature>,
+        features: &Vec<Feature>,
         training_samples: &Vec<(Matrix, Classification)>,
         distribution_t: &Vec<f64>,
-    ) -> (WeakClassifier<'a>, f64) {
+    ) -> (WeakClassifier, f64) {
         let mut weak_classifiers = Self::get_optimals(features, training_samples, distribution_t);
 
         // Select the best classifier based on error rate.

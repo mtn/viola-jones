@@ -83,56 +83,56 @@ impl Learner {
     fn run_boosting(&self) -> StrongClassifier {
         let mut strong = StrongClassifier::new();
 
-        // // To avoid getting stuck to do outliers, we limit the number of total weak
-        // // learners we add to the classifier in a given boosting.
-        // let mut boosting_round = 0;
-        // let mut distribution = vec![1. / self.training_inputs.len() as f64; self.training_inputs.len()];
-        // loop {
-        //     boosting_round += 1;
+        // To avoid getting stuck to do outliers, we limit the number of total weak
+        // learners we add to the classifier in a given boosting.
+        let mut boosting_round = 0;
+        let mut distribution = vec![1. / self.training_inputs.len() as f64; self.training_inputs.len()];
+        loop {
+            boosting_round += 1;
 
-        //     let (best_classifier, best_error): (WeakClassifier, f64) = WeakClassifier::best_stump(
-        //         &self.haar_features,
-        //         &self.training_inputs,
-        //         &distribution,
-        //     );
+            let (best_classifier, best_error): (WeakClassifier, f64) = WeakClassifier::best_stump(
+                &self.haar_features,
+                &self.training_inputs,
+                &distribution,
+            );
 
-        //     let alpha_t = (0.5) * ((1. - best_error) / best_error).ln();
-        //     strong.add_weak_classifier(best_classifier, alpha_t, &self.training_inputs);
+            let alpha_t = (0.5) * ((1. - best_error) / best_error).ln();
+            strong.add_weak_classifier(best_classifier, alpha_t, &self.training_inputs);
 
-        //     // Turn this into a strong learner by itself and return
-        //     if best_error == 0. {
-        //         println!("Found a single weak classifier that had 0 error, returning early");
-        //         unimplemented!()
-        //     }
+            // Turn this into a strong learner by itself and return
+            if best_error == 0. {
+                println!("Found a single weak classifier that had 0 error, returning early");
+                unimplemented!()
+            }
 
-        //     // Update the distribution weights
-        //     // let normalization_factor: f64 = 2. * (best_error * (1. - best_error)).sqrt();
-        //     let mut newtot = 0.;
-        //     for (i, sample) in self.training_inputs.iter().enumerate() {
-        //         // The classification result multiplies like -1 and 1
-        //         let classification = strong.classifiers.last().unwrap().evaluate(&sample.0);
-        //         distribution[i] =
-        //             (distribution[i]) * (classification * sample.1 * -1. * alpha_t).exp();
-        //         newtot += distribution[i];
-        //     }
+            // Update the distribution weights
+            // let normalization_factor: f64 = 2. * (best_error * (1. - best_error)).sqrt();
+            let mut newtot = 0.;
+            for (i, sample) in self.training_inputs.iter().enumerate() {
+                // The classification result multiplies like -1 and 1
+                let classification = strong.classifiers.last().unwrap().evaluate(&sample.0);
+                distribution[i] =
+                    (distribution[i]) * (classification * sample.1 * -1. * alpha_t).exp();
+                newtot += distribution[i];
+            }
 
-        //     distribution = distribution.iter().map(|x| x / newtot).collect();
+            distribution = distribution.iter().map(|x| x / newtot).collect();
 
-        //     let (fpr, fnr, overall) = strong.compute_error(&self.training_inputs);
+            let (fpr, fnr, overall) = strong.compute_error(&self.training_inputs);
 
-        //     println!("Finished boosting round {}", boosting_round);
-        //     println!(
-        //         "Currently have {} weak classifiers with FPR {} and FNR {} and overall error {}",
-        //         strong.classifiers.len(),
-        //         fpr,
-        //         fnr,
-        //         overall
-        //     );
+            println!("Finished boosting round {}", boosting_round);
+            println!(
+                "Currently have {} weak classifiers with FPR {} and FNR {} and overall error {}",
+                strong.classifiers.len(),
+                fpr,
+                fnr,
+                overall
+            );
 
-        //     if fpr <= 0.3 {
-        //         break;
-        //     }
-        // }
+            if fpr <= 0.3 {
+                break;
+            }
+        }
 
         strong
     }
@@ -156,7 +156,7 @@ impl Learner {
             // amount of false negatives (2), which isn't a big deal.
             let mut new_inputs = Vec::new();
             for (sample, label) in &self.training_inputs {
-                if strong_learners.last().unwrap().evaluate(&sample) == *label {
+                if strong_learners.last().unwrap().evaluate(&sample) == Classification::Face {
                     new_inputs.push((sample.clone(), *label));
                 }
             }

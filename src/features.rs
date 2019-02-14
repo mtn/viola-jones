@@ -4,7 +4,7 @@ use super::util::{compute_area, Rectangle};
 use super::Matrix;
 use std::ops::{Mul, Not};
 
-#[derive(Debug)]
+#[derive(Debug, Copy, Clone)]
 pub struct HaarFeature {
     feature_type: HaarFeatureType,
     pub tl_sign: Sign,
@@ -14,7 +14,7 @@ pub struct HaarFeature {
     y: usize,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Copy, Clone)]
 pub enum HaarFeatureType {
     TwoVertical,
     TwoHorizontal,

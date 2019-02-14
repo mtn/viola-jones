@@ -1,20 +1,20 @@
 use std::f64;
 
-type WeakClassifier<'a> = super::weak_classifier::WeakClassifier<'a>;
+type WeakClassifier = super::weak_classifier::WeakClassifier;
 type Classification = super::Classification;
 type Matrix = ndarray::Array2<i64>;
 
 #[derive(Debug, Clone)]
-pub struct StrongClassifier<'a> {
-    pub classifiers: Vec<WeakClassifier<'a>>,
+pub struct StrongClassifier {
+    pub classifiers: Vec<WeakClassifier>,
     weights: Vec<f64>,
     threshold: f64,
 }
 
-impl<'a> StrongClassifier<'a> {
+impl StrongClassifier {
     /// Create a new strong classifier (finding the threshold that removes false
     /// negatives) from an ensemble of weak classifiers and trained weights.
-    pub fn new() -> StrongClassifier<'a> {
+    pub fn new() -> StrongClassifier {
         StrongClassifier {
             classifiers: Vec::new(),
             weights: Vec::new(),
@@ -57,6 +57,7 @@ impl<'a> StrongClassifier<'a> {
             }
         }
 
+        println!("Computing error, len is {}", input_samples.len());
         (
             num_false_positives / input_samples.len() as f64,
             num_false_negatives / input_samples.len() as f64,
@@ -94,7 +95,7 @@ impl<'a> StrongClassifier<'a> {
     /// associated weight.
     pub fn add_weak_classifier(
         &mut self,
-        classifier: WeakClassifier<'a>,
+        classifier: WeakClassifier,
         weight: f64,
         input_samples: &Vec<(Matrix, Classification)>,
     ) {
