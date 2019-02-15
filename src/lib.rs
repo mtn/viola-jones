@@ -248,8 +248,8 @@ impl Learner {
 
         let mut num_faces = 0;
         let mut faces = Vec::new();
-        for (x, y) in sliding_windows {
-            let subimg = test_img.slice(s![x..x+64, y..y+64]);
+        for (y, x) in sliding_windows {
+            let subimg = test_img.slice(s![y..y+64, x..x+64]);
 
             for (i, classifier) in cascade.iter().enumerate() {
                 let classification = classifier.evaluate(&subimg);
@@ -277,7 +277,7 @@ impl Learner {
 
         let mut ind = 0;
         for (face_x, face_y) in faces.iter().skip(1) {
-            let face_rect = Rect::at(*face_y as i32, *face_x as i32).of_size(64, 64);
+            let face_rect = Rect::at(*face_x as i32, *face_y as i32).of_size(64, 64);
             partials.push(imageproc::drawing::draw_hollow_rect(&partials[ind], face_rect, Rgba([255, 0, 0, 255])));
             ind += 1;
         }

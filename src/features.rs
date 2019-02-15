@@ -2,7 +2,6 @@
 /// Design is based on PistonDevelopers/imageproc.
 use super::util::{compute_area, Rectangle};
 use serde::{Serialize, Deserialize};
-use super::Matrix;
 use std::ops::{Mul, Not};
 
 type MatrixView<'a> = ndarray::ArrayView2<'a, i64>;

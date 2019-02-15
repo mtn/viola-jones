@@ -75,7 +75,7 @@ fn test_img_as_matrix(img: DynamicImage) -> Matrix {
     let pixel_arr = Array::from_vec(raw_pixels);
 
     pixel_arr
-        .into_shape((1600, 1280))
+        .into_shape((1280, 1600))
         .expect("Failed to transform pixel array into matrix")
 }
 
@@ -147,22 +147,23 @@ fn compute_integral_images(imgs: Vec<Matrix>) -> Vec<Matrix> {
 pub fn load_test_image(test_img_path: &str) -> (Matrix, Vec<(usize, usize)>) {
     let test_img = image::open(test_img_path).expect("Failed to open test image");
     let test_img_mat = test_img_as_matrix(test_img);
-    assert!((1600, 1280) == test_img_mat.dim());
+    // 1280 rows and 1600 columns
+    assert!((1280, 1600) == test_img_mat.dim());
 
     let test_integral = compute_integral_image(&test_img_mat);
-    let sliding_coords = get_sliding_window_coords(1600, 1280, 64, 1);
+    let sliding_coords = get_sliding_window_coords(1600, 1280, 64, 3);
 
     (test_integral, sliding_coords)
 }
 
 /// Compute the top-left coordinates of a square window sliding over a space rectangle
-/// of dimensions (xmax, ymax).
+/// of dimensions (xmax, ymax). Coordinates are ordered (y, x) for use in ndarrays.
 fn get_sliding_window_coords(xmax: usize, ymax: usize, window_side_len: usize, stride: usize) -> Vec<(usize, usize)> {
     let mut coords = Vec::new();
-    for x in (0..xmax).step_by(stride) {
-        for y in (0..ymax).step_by(stride) {
+    for y in (0..ymax).step_by(stride) {
+        for x in (0..xmax).step_by(stride) {
             if x + window_side_len < xmax && y + window_side_len < ymax {
-                coords.push((x, y));
+                coords.push((y, x));
             }
         }
     }
