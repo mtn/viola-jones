@@ -1,6 +1,8 @@
 /// General utility functions
 use super::Matrix;
 
+type MatrixView<'a> = ndarray::ArrayView2<'a, i64>;
+
 #[derive(Debug)]
 pub struct Rectangle {
     pub xmin: usize,
@@ -25,7 +27,7 @@ impl Rectangle {
 }
 
 /// Compute the area of a block within an (assumed) padded integral image
-pub fn compute_area(img: &Matrix, r: &Rectangle) -> i64 {
+pub fn compute_area(img: &MatrixView, r: &Rectangle) -> i64 {
     img[[r.ymax, r.xmax]] + img[[r.ymin, r.xmin]] - img[[r.ymin, r.xmax]] - img[[r.ymax, r.xmin]]
 }
 

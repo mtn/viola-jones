@@ -4,6 +4,7 @@ use std::f64;
 type WeakClassifier = super::weak_classifier::WeakClassifier;
 type Classification = super::Classification;
 type Matrix = ndarray::Array2<i64>;
+type MatrixView<'a> = ndarray::ArrayView2<'a, i64>;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct StrongClassifier {
@@ -24,7 +25,7 @@ impl StrongClassifier {
     }
 
     /// Makes a weighted classification prediction using the ensemble of classifiers.
-    pub fn evaluate(&self, img: &Matrix) -> Classification {
+    pub fn evaluate(&self, img: &MatrixView) -> Classification {
         if self.evaluate_raw(img) >= 0. {
             Classification::Face
         } else {
@@ -32,7 +33,7 @@ impl StrongClassifier {
         }
     }
 
-    fn evaluate_raw(&self, img: &Matrix) -> f64 {
+    fn evaluate_raw(&self, img: &MatrixView) -> f64 {
         let mut weighted_score = 0.;
 
         for (classifier, weight) in self.classifiers.iter().zip(self.weights.iter()) {
@@ -49,7 +50,7 @@ impl StrongClassifier {
         let mut num_negatives = 0.;
 
         for (img, label) in input_samples {
-            let classification = self.evaluate(img);
+            let classification = self.evaluate(&img.view());
 
             if *label == Classification::NonFace {
                 num_negatives += 1.;
@@ -83,7 +84,7 @@ impl StrongClassifier {
 
             let mut score = 0.;
             for (classifier, weight) in self.classifiers.iter().zip(self.weights.iter()) {
-                score += weight * classifier.evaluate_raw(img) as f64;
+                score += weight * classifier.evaluate_raw(&img.view()) as f64;
             }
 
             face_scores.push(score);

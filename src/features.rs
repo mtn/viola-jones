@@ -5,6 +5,8 @@ use serde::{Serialize, Deserialize};
 use super::Matrix;
 use std::ops::{Mul, Not};
 
+type MatrixView<'a> = ndarray::ArrayView2<'a, i64>;
+
 #[derive(Debug, Copy, Clone, Serialize, Deserialize)]
 pub struct HaarFeature {
     feature_type: HaarFeatureType,
@@ -80,7 +82,7 @@ impl HaarFeature {
 
     /// Evaluate the Haar feature on the integral image (in constant time).
     /// Bound are assumed to be correct.
-    pub fn evaluate(&self, img: &Matrix) -> i64 {
+    pub fn evaluate(&self, img: &MatrixView) -> i64 {
         let rects = self.to_rectangles();
         let mut score = 0;
 

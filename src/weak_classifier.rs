@@ -6,6 +6,7 @@ type Feature = super::features::HaarFeature;
 type Toggle = super::features::Sign;
 type Matrix = ndarray::Array2<i64>;
 type Classification = super::Classification;
+type MatrixView<'a> = ndarray::ArrayView2<'a, i64>;
 
 #[derive(Clone, Copy, Debug, Serialize, Deserialize)]
 pub struct WeakClassifier {
@@ -34,7 +35,7 @@ impl WeakClassifier {
         let mut scores: Vec<(i64, f64, Classification)> =
             Vec::with_capacity(training_samples.len());
         for (sample, dist) in training_samples.iter().zip(distribution_t.iter()) {
-            scores.push((feature.evaluate(&sample.0), *dist, sample.1));
+            scores.push((feature.evaluate(&sample.0.view()), *dist, sample.1));
         }
         scores.sort_by(|a, b| a.0.cmp(&b.0));
 
@@ -132,7 +133,7 @@ impl WeakClassifier {
     }
 
     /// Evaluate the weak classifier on an input image.
-    pub fn evaluate(&self, img: &Matrix) -> Classification {
+    pub fn evaluate(&self, img: &MatrixView) -> Classification {
         if self.evaluate_raw(img) >= 0 {
             Classification::Face
         } else {
@@ -141,14 +142,14 @@ impl WeakClassifier {
     }
 
     /// Return the raw score of the evaluated feature.
-    pub fn evaluate_raw(&self, img: &Matrix) -> i64 {
+    pub fn evaluate_raw(&self, img: &MatrixView) -> i64 {
         self.toggle * (self.feature.evaluate(img) - self.threshold)
     }
 
     /// Computes the weighted error of the weak classifier
     pub fn compute_error(
         &self,
-        input_samples: &Vec<(Matrix, Classification)>,
+        input_samples: &Vec<(MatrixView, Classification)>,
         weights: &Vec<f64>,
     ) -> f64 {
         let mut weighted_error = 0.;

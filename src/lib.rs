@@ -25,6 +25,7 @@ use strong_classifier::StrongClassifier;
 use weak_classifier::WeakClassifier;
 
 pub type Matrix = ndarray::Array2<i64>;
+type MatrixView<'a> = ndarray::ArrayView2<'a, i64>;
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Classification {
@@ -124,7 +125,7 @@ impl Learner {
             let mut newtot = 0.;
             for (i, sample) in self.training_inputs.iter().enumerate() {
                 // The classification result multiplies like -1 and 1
-                let classification = strong.classifiers.last().unwrap().evaluate(&sample.0);
+                let classification = strong.classifiers.last().unwrap().evaluate(&sample.0.view());
                 distribution[i] =
                     (distribution[i]) * (classification * sample.1 * -1. * alpha_t).exp();
                 newtot += distribution[i];
@@ -177,7 +178,7 @@ impl Learner {
             // amount of false negatives (2), which isn't a big deal.
             let mut new_inputs = Vec::new();
             for (sample, label) in &self.training_inputs {
-                if cascade.last().unwrap().evaluate(&sample) == Classification::Face {
+                if cascade.last().unwrap().evaluate(&sample.view()) == Classification::Face {
                     new_inputs.push((sample.clone(), *label));
                 }
             }
@@ -201,7 +202,7 @@ impl Learner {
                 num_negative_examples += 1.;
             }
             for (i, layer) in cascade.iter().enumerate() {
-                let classification = layer.evaluate(sample);
+                let classification = layer.evaluate(&sample.view());
 
                 // Check for a true detection
                 if i == (cascade.len() - 1) && classification == Classification::Face {
