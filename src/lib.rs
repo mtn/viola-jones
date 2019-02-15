@@ -1,8 +1,10 @@
 #![feature(type_alias_enum_variants)]
 
 extern crate indicatif;
+#[macro_use]
 extern crate ndarray;
-extern crate rayon;
+extern crate bincode;
+extern crate serde;
 
 mod features;
 mod preprocess;
@@ -10,16 +12,21 @@ mod strong_classifier;
 mod util;
 mod weak_classifier;
 
+use std::fs;
+use std::fs::File;
+use std::io::{BufWriter, BufReader};
+use std::io::prelude::*;
+use bincode::{serialize_into, deserialize_from};
+use serde::{Serialize, Deserialize};
 use features::HaarFeature;
 use std::f64;
 use std::ops::Mul;
 use strong_classifier::StrongClassifier;
 use weak_classifier::WeakClassifier;
-// use indicatif::{ProgressBar, ProgressStyle};
 
 pub type Matrix = ndarray::Array2<i64>;
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Classification {
     Face,
     NonFace,
@@ -48,10 +55,14 @@ impl Mul for Classification {
 }
 
 /// A cascaded learner.
+#[derive(Serialize, Deserialize)]
 pub struct Learner {
     max_cascade_depth: u8,
 
+    #[serde(skip)]
     training_inputs: Vec<(Matrix, Classification)>,
+    #[serde(skip)]
+    original_training_inputs: Vec<(Matrix, Classification)>,
 
     haar_features: Vec<HaarFeature>,
 }
@@ -63,7 +74,9 @@ impl Learner {
         max_cascade_depth: u8,
     ) -> Learner {
         // Load the data (faces followed by background, in tuples with class labels)
-        let (training_inputs, nfaces, nbackgrounds) =
+        let training_inputs =
+            preprocess::load_and_preprocess_data(faces_dir, background_dir);
+        let original_training_inputs =
             preprocess::load_and_preprocess_data(faces_dir, background_dir);
 
         let (maxw, maxh) = training_inputs[0].0.dim();
@@ -74,7 +87,8 @@ impl Learner {
         Learner {
             max_cascade_depth,
             training_inputs,
-            haar_features: features::init_haar_features(maxw, maxh, 6, 6),
+            original_training_inputs,
+            haar_features: features::init_haar_features(maxw, maxh, 4, 4),
         }
     }
 
@@ -129,7 +143,7 @@ impl Learner {
                 overall
             );
 
-            if fpr <= 0.3 {
+            if fpr <= 0.35 && boosting_round >= 3 {
                 break;
             }
         }
@@ -141,26 +155,98 @@ impl Learner {
         assert!(self.training_inputs.len() == 4000);
         println!("Beginning training...");
 
-        let mut strong_learners: Vec<StrongClassifier> =
+        let mut cascade: Vec<StrongClassifier> =
             Vec::with_capacity(self.max_cascade_depth as usize);
 
         let mut cascade_round = 0;
         loop {
-            cascade_round += 1;
-            println!("Starting cascade round {}", cascade_round);
+            if cascade_round == self.max_cascade_depth {
+                break;
+            }
 
-            strong_learners.push(self.run_boosting());
+            cascade_round += 1;
+
+            println!("-------------------------");
+            println!("Starting cascade round {}", cascade_round);
+            println!("-------------------------");
+
+            cascade.push(self.run_boosting());
 
             // Remove examples that are classified as negative from the set of inputs
             // that gets fed into the next layer in the cascade. This removes a trivial
             // amount of false negatives (2), which isn't a big deal.
             let mut new_inputs = Vec::new();
             for (sample, label) in &self.training_inputs {
-                if strong_learners.last().unwrap().evaluate(&sample) == Classification::Face {
+                if cascade.last().unwrap().evaluate(&sample) == Classification::Face {
                     new_inputs.push((sample.clone(), *label));
                 }
             }
             self.training_inputs = new_inputs;
+        }
+
+        self.evaluate_and_save_cascade(cascade);
+    }
+
+    fn evaluate_and_save_cascade(&self, cascade: Vec<StrongClassifier>) {
+        println!("-------------------");
+        println!("Cascade Evaluation:");
+        println!("-------------------");
+
+
+        let mut num_true_positives = 0.;
+        let mut num_false_positives = 0.;
+        let mut num_negative_examples = 0.;
+        for (sample, label) in &self.original_training_inputs {
+            if *label == Classification::NonFace {
+                num_negative_examples += 1.;
+            }
+            for (i, layer) in cascade.iter().enumerate() {
+                let classification = layer.evaluate(sample);
+
+                // Check for a true detection
+                if i == (cascade.len() - 1) && classification == Classification::Face {
+                    if *label == Classification::Face {
+                        num_true_positives += 1.;
+                        break;
+                    } else {
+                        num_false_positives += 1.;
+                        break;
+                    }
+                }
+            }
+        }
+
+        let num_positive_examples = self.original_training_inputs.len() as f64 - num_negative_examples;
+        let false_positive_rate = num_false_positives / num_negative_examples;
+        let detection_rate = num_true_positives / num_positive_examples;
+
+        println!("False positive rate: {} / {} = {}", num_false_positives, num_negative_examples, false_positive_rate);
+        println!("Detection rate:      {} / {} = {}", num_true_positives, num_positive_examples, detection_rate);
+
+        // Serialize and save the cascade
+        fs::write("saved_cascade.json", serde_json::to_string(&cascade).expect("Failed to serialize cascade to string")).expect("Failed to write serialized cascade to file");
+
+        println!("Saved results to 'saved_cascade.json'");
+    }
+
+    /// Run a saved cascade on a test image.
+    pub fn test_cascade(test_img_path: &str, saved_cascade_path: &str) {
+        // Load the saved cascade
+        let mut cascade_file = File::open(saved_cascade_path).expect("Couldn't open cascade file");
+        let mut cascade_contents = String::new();
+        cascade_file.read_to_string(&mut cascade_contents).unwrap();
+        let cascade: Vec<StrongClassifier> = serde_json::from_str(&cascade_contents).unwrap();
+
+        // Load the test image
+        let sliding_window_size = 64;
+        let (test_img, sliding_windows) = preprocess::load_test_image(test_img_path);
+
+        println!("Considering a total of {} faces within the test image", sliding_windows.len());
+
+        for (x, y) in sliding_windows {
+            let subview = test_img.slice(s![x..x+64, y..y+64]);
+
+            assert!(false);
         }
     }
 }

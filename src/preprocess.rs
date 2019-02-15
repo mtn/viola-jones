@@ -26,22 +26,20 @@ fn flatten_to_classlist(
 pub fn load_and_preprocess_data(
     faces_dir: &str,
     background_dir: &str,
-) -> (Vec<(Matrix, Classification)>, usize, usize) {
+) -> Vec<(Matrix, Classification)> {
     let faces = load_imgs_from_dir(faces_dir);
     let backgrounds = load_imgs_from_dir(background_dir);
 
     let integral_faces = compute_integral_images(faces);
     let integral_backgrounds = compute_integral_images(backgrounds);
 
-    let (nfaces, nbackgrounds) = (integral_faces.len(), integral_backgrounds.len());
-
     let flattened = flatten_to_classlist(integral_faces, integral_backgrounds);
 
-    (flattened, nfaces, nbackgrounds)
+    flattened
 }
 
-/// Load an opened image into a matrix
-fn img_as_matrix(img: DynamicImage) -> Matrix {
+/// Load an opened training image into a matrix
+fn training_img_as_matrix(img: DynamicImage) -> Matrix {
     // raw_pixels gives a flat vector of the form [r1,g1,b1,r2,g2,b2,...]
     let raw_pixels = img.raw_pixels();
     assert!(raw_pixels.len() == 64 * 64 * 3);
@@ -65,6 +63,22 @@ fn img_as_matrix(img: DynamicImage) -> Matrix {
         .expect("Failed to transform pixel array into matrix")
 }
 
+/// Load an opened test into a matrix
+/// TODO abstract into function that works over all image dimensions
+fn test_img_as_matrix(img: DynamicImage) -> Matrix {
+    // raw_pixels is just a raw array of pixels, for some reason. Maybe there's something
+    // in the jpg spec that indicates when an image isn't rgb.
+    let raw_pixels: Vec<i64> = img.raw_pixels().iter().map(|x| *x as i64).collect();
+    let max_pixel = raw_pixels.iter().cloned().fold(0, i64::max);
+    assert!(max_pixel <= 255);
+
+    let pixel_arr = Array::from_vec(raw_pixels);
+
+    pixel_arr
+        .into_shape((1600, 1280))
+        .expect("Failed to transform pixel array into matrix")
+}
+
 /// Returns a vector of matrices loaded from the input directory
 fn load_imgs_from_dir(dir_name: &str) -> Vec<Matrix> {
     let imgs = fs::read_dir(dir_name).expect("Data directory not found");
@@ -84,7 +98,7 @@ fn load_imgs_from_dir(dir_name: &str) -> Vec<Matrix> {
             continue;
         } else if "jpg" == ext.unwrap() {
             let img = image::open(img_path).expect("Failed to open image");
-            loaded.push(img_as_matrix(img));
+            loaded.push(training_img_as_matrix(img));
         }
     }
 
@@ -128,6 +142,34 @@ fn compute_integral_images(imgs: Vec<Matrix>) -> Vec<Matrix> {
     integral_imgs
 }
 
+/// Returns a set of integral images corresponding to windows in the test
+/// image, and a top-right coordinate in the image.
+pub fn load_test_image(test_img_path: &str) -> (Matrix, Vec<(usize, usize)>) {
+    let test_img = image::open(test_img_path).expect("Failed to open test image");
+    let test_img_mat = test_img_as_matrix(test_img);
+    assert!((1600, 1280) == test_img_mat.dim());
+
+    let test_integral = compute_integral_image(&test_img_mat);
+    let sliding_coords = get_sliding_window_coords(1600, 1280, 64, 3);
+
+    (test_integral, sliding_coords)
+}
+
+/// Compute the top-left coordinates of a square window sliding over a space rectangle
+/// of dimensions (xmax, ymax).
+fn get_sliding_window_coords(xmax: usize, ymax: usize, window_side_len: usize, stride: usize) -> Vec<(usize, usize)> {
+    let mut coords = Vec::new();
+    for x in (0..xmax).step_by(stride) {
+        for y in (0..ymax).step_by(stride) {
+            if x + window_side_len < xmax && y + window_side_len < ymax {
+                coords.push((x, y));
+            }
+        }
+    }
+
+    coords
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -146,7 +188,7 @@ mod tests {
             }
         }
 
-        let mat = img_as_matrix(img);
+        let mat = training_img_as_matrix(img);
 
         assert!(mat.ndim() == 2);
         assert!(mat.dim() == (64, 64));
@@ -197,5 +239,19 @@ mod tests {
 
         assert!(int_inp_mat.dim() == (6, 6));
         assert!(int_inp_mat == exp_mat);
+    }
+
+    #[test]
+    fn correct_sliding_windows_computed() {
+        let xmax = 10;
+        let ymax = 10;
+        let stride = 3;
+        let window_side_len = 4;
+
+        let mut sliding_window_result = get_sliding_window_coords(xmax, ymax, stride, window_side_len);
+        sliding_window_result.sort();
+        let expected = vec![(0,0), (0,3), (3,0), (3,3)];
+
+        assert!(sliding_window_result.len() == 4);
     }
 }

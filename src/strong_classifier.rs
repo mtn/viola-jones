@@ -1,10 +1,11 @@
+use serde::{Serialize, Deserialize};
 use std::f64;
 
 type WeakClassifier = super::weak_classifier::WeakClassifier;
 type Classification = super::Classification;
 type Matrix = ndarray::Array2<i64>;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct StrongClassifier {
     pub classifiers: Vec<WeakClassifier>,
     weights: Vec<f64>,
@@ -24,7 +25,7 @@ impl StrongClassifier {
 
     /// Makes a weighted classification prediction using the ensemble of classifiers.
     pub fn evaluate(&self, img: &Matrix) -> Classification {
-        if self.evaluate_raw(img) - self.threshold >= 0. {
+        if self.evaluate_raw(img) >= 0. {
             Classification::Face
         } else {
             Classification::NonFace
@@ -38,16 +39,21 @@ impl StrongClassifier {
             weighted_score += weight * classifier.evaluate_raw(img) as f64;
         }
 
-        weighted_score
+        weighted_score - self.threshold
     }
 
     /// Computes the error for an ensemble of classifiers (for a given threshold).
     pub fn compute_error(&self, input_samples: &Vec<(Matrix, Classification)>) -> (f64, f64, f64) {
         let mut num_false_negatives: f64 = 0.;
         let mut num_false_positives: f64 = 0.;
+        let mut num_negatives = 0.;
 
         for (img, label) in input_samples {
             let classification = self.evaluate(img);
+
+            if *label == Classification::NonFace {
+                num_negatives += 1.;
+            }
 
             if classification != *label {
                 match classification {
@@ -59,8 +65,8 @@ impl StrongClassifier {
 
         println!("Computing error, len is {}", input_samples.len());
         (
-            num_false_positives / input_samples.len() as f64,
-            num_false_negatives / input_samples.len() as f64,
+            num_false_positives / num_negatives,
+            num_false_negatives / (input_samples.len() as f64 - num_negatives),
             (num_false_positives + num_false_negatives) / input_samples.len() as f64,
         )
     }
@@ -85,8 +91,8 @@ impl StrongClassifier {
 
         face_scores.sort_by(|a, b| a.partial_cmp(&b).unwrap());
 
-        // TODO make sure the vector is long enough
-        self.threshold = face_scores[2];
+        let ind = (face_scores.len() as f64 * 0.05).floor() as usize;
+        self.threshold = face_scores[ind];
 
         self.threshold
     }

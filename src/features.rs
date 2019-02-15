@@ -1,10 +1,11 @@
 /// Haar Feature definitions and computation methods.
 /// Design is based on PistonDevelopers/imageproc.
 use super::util::{compute_area, Rectangle};
+use serde::{Serialize, Deserialize};
 use super::Matrix;
 use std::ops::{Mul, Not};
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Serialize, Deserialize)]
 pub struct HaarFeature {
     feature_type: HaarFeatureType,
     pub tl_sign: Sign,
@@ -14,7 +15,7 @@ pub struct HaarFeature {
     y: usize,
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Serialize, Deserialize)]
 pub enum HaarFeatureType {
     TwoVertical,
     TwoHorizontal,
@@ -22,7 +23,7 @@ pub enum HaarFeatureType {
     TwoByTwo,
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Sign {
     Positive,
     Negative,
@@ -192,18 +193,18 @@ pub fn init_haar_features(
                             y,
                         ));
                     }
-                    if x + 3 * w < maxw {
-                        haar_features.push(HaarFeature::new(
-                            HaarFeatureType::ThreeHorizontal,
-                            w,
-                            h,
-                            x,
-                            y,
-                        ));
-                    }
-                    if x + 2 * w < maxw && y + 2 * h < maxh {
-                        haar_features.push(HaarFeature::new(HaarFeatureType::TwoByTwo, w, h, x, y));
-                    }
+                    // if x + 3 * w < maxw {
+                    //     haar_features.push(HaarFeature::new(
+                    //         HaarFeatureType::ThreeHorizontal,
+                    //         w,
+                    //         h,
+                    //         x,
+                    //         y,
+                    //     ));
+                    // }
+                    // if x + 2 * w < maxw && y + 2 * h < maxh {
+                    //     haar_features.push(HaarFeature::new(HaarFeatureType::TwoByTwo, w, h, x, y));
+                    // }
                 }
             }
         }

@@ -1,4 +1,5 @@
 use indicatif::{ProgressBar, ProgressStyle};
+use serde::{Serialize, Deserialize};
 use std::f64;
 
 type Feature = super::features::HaarFeature;
@@ -6,7 +7,7 @@ type Toggle = super::features::Sign;
 type Matrix = ndarray::Array2<i64>;
 type Classification = super::Classification;
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, Serialize, Deserialize)]
 pub struct WeakClassifier {
     feature: Feature,
     toggle: Toggle,
