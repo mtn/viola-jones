@@ -23,6 +23,9 @@ use std::f64;
 use std::ops::Mul;
 use strong_classifier::StrongClassifier;
 use weak_classifier::WeakClassifier;
+use imageproc::rect::Rect;
+use image::Rgba;
+
 
 pub type Matrix = ndarray::Array2<i64>;
 type MatrixView<'a> = ndarray::ArrayView2<'a, i64>;
@@ -239,16 +242,48 @@ impl Learner {
         let cascade: Vec<StrongClassifier> = serde_json::from_str(&cascade_contents).unwrap();
 
         // Load the test image
-        let sliding_window_size = 64;
         let (test_img, sliding_windows) = preprocess::load_test_image(test_img_path);
 
         println!("Considering a total of {} faces within the test image", sliding_windows.len());
 
+        let mut num_faces = 0;
+        let mut faces = Vec::new();
         for (x, y) in sliding_windows {
-            let subview = test_img.slice(s![x..x+64, y..y+64]);
+            let subimg = test_img.slice(s![x..x+64, y..y+64]);
 
-            assert!(false);
+            for (i, classifier) in cascade.iter().enumerate() {
+                let classification = classifier.evaluate(&subimg);
+
+                if classification == Classification::NonFace {
+                    break;
+                }
+
+                if i == cascade.len() - 1 && classification == Classification::Face {
+                    num_faces += 1;
+                    faces.push((x, y));
+                }
+            }
         }
+
+        println!("Number of identified by trained cascaded learner: {}", num_faces);
+
+        // Open the image with image_proc to draw on the boxes
+        let test_img = image::open(test_img_path).expect("Failed to open test image");
+
+        // This is incredibly stupid. Unfortunately, no time to figure out something
+        // better.
+        let face_rect = Rect::at(faces[0].0 as i32, faces[0].1 as i32).of_size(64, 64);
+        let mut partials = vec![imageproc::drawing::draw_hollow_rect(&test_img, face_rect, Rgba([255, 0, 0, 255]))];
+
+        let mut ind = 0;
+        for (face_x, face_y) in faces.iter().skip(1) {
+            let face_rect = Rect::at(*face_y as i32, *face_x as i32).of_size(64, 64);
+            partials.push(imageproc::drawing::draw_hollow_rect(&partials[ind], face_rect, Rgba([255, 0, 0, 255])));
+            ind += 1;
+        }
+
+        partials[num_faces - 1].save("test_img_out.jpg").unwrap();
+        println!("Saved output image to 'test_img_out.jpg'");
     }
 }
 

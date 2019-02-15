@@ -150,7 +150,7 @@ pub fn load_test_image(test_img_path: &str) -> (Matrix, Vec<(usize, usize)>) {
     assert!((1600, 1280) == test_img_mat.dim());
 
     let test_integral = compute_integral_image(&test_img_mat);
-    let sliding_coords = get_sliding_window_coords(1600, 1280, 64, 3);
+    let sliding_coords = get_sliding_window_coords(1600, 1280, 64, 1);
 
     (test_integral, sliding_coords)
 }
