@@ -12,20 +12,20 @@ mod strong_classifier;
 mod util;
 mod weak_classifier;
 
+use bincode::{deserialize_from, serialize_into};
+use features::HaarFeature;
+use image::Rgba;
+use imageproc::rect::Rect;
+use indicatif::{ProgressBar, ProgressStyle};
+use serde::{Deserialize, Serialize};
+use std::f64;
 use std::fs;
 use std::fs::File;
-use std::io::{BufWriter, BufReader};
 use std::io::prelude::*;
-use bincode::{serialize_into, deserialize_from};
-use serde::{Serialize, Deserialize};
-use features::HaarFeature;
-use std::f64;
+use std::io::{BufReader, BufWriter};
 use std::ops::Mul;
 use strong_classifier::StrongClassifier;
 use weak_classifier::WeakClassifier;
-use imageproc::rect::Rect;
-use image::Rgba;
-
 
 pub type Matrix = ndarray::Array2<i64>;
 type MatrixView<'a> = ndarray::ArrayView2<'a, i64>;
@@ -72,14 +72,9 @@ pub struct Learner {
 }
 
 impl Learner {
-    pub fn new(
-        faces_dir: &str,
-        background_dir: &str,
-        max_cascade_depth: u8,
-    ) -> Learner {
+    pub fn new(faces_dir: &str, background_dir: &str, max_cascade_depth: u8) -> Learner {
         // Load the data (faces followed by background, in tuples with class labels)
-        let training_inputs =
-            preprocess::load_and_preprocess_data(faces_dir, background_dir);
+        let training_inputs = preprocess::load_and_preprocess_data(faces_dir, background_dir);
         let original_training_inputs =
             preprocess::load_and_preprocess_data(faces_dir, background_dir);
 
@@ -104,7 +99,8 @@ impl Learner {
         // To avoid getting stuck to do outliers, we limit the number of total weak
         // learners we add to the classifier in a given boosting.
         let mut boosting_round = 0;
-        let mut distribution = vec![1. / self.training_inputs.len() as f64; self.training_inputs.len()];
+        let mut distribution =
+            vec![1. / self.training_inputs.len() as f64; self.training_inputs.len()];
         loop {
             boosting_round += 1;
 
@@ -128,7 +124,11 @@ impl Learner {
             let mut newtot = 0.;
             for (i, sample) in self.training_inputs.iter().enumerate() {
                 // The classification result multiplies like -1 and 1
-                let classification = strong.classifiers.last().unwrap().evaluate(&sample.0.view());
+                let classification = strong
+                    .classifiers
+                    .last()
+                    .unwrap()
+                    .evaluate(&sample.0.view());
                 distribution[i] =
                     (distribution[i]) * (classification * sample.1 * -1. * alpha_t).exp();
                 newtot += distribution[i];
@@ -196,7 +196,6 @@ impl Learner {
         println!("Cascade Evaluation:");
         println!("-------------------");
 
-
         let mut num_true_positives = 0.;
         let mut num_false_positives = 0.;
         let mut num_negative_examples = 0.;
@@ -220,15 +219,26 @@ impl Learner {
             }
         }
 
-        let num_positive_examples = self.original_training_inputs.len() as f64 - num_negative_examples;
+        let num_positive_examples =
+            self.original_training_inputs.len() as f64 - num_negative_examples;
         let false_positive_rate = num_false_positives / num_negative_examples;
         let detection_rate = num_true_positives / num_positive_examples;
 
-        println!("False positive rate: {} / {} = {}", num_false_positives, num_negative_examples, false_positive_rate);
-        println!("Detection rate:      {} / {} = {}", num_true_positives, num_positive_examples, detection_rate);
+        println!(
+            "False positive rate: {} / {} = {}",
+            num_false_positives, num_negative_examples, false_positive_rate
+        );
+        println!(
+            "Detection rate:      {} / {} = {}",
+            num_true_positives, num_positive_examples, detection_rate
+        );
 
         // Serialize and save the cascade
-        fs::write("saved_cascade.json", serde_json::to_string(&cascade).expect("Failed to serialize cascade to string")).expect("Failed to write serialized cascade to file");
+        fs::write(
+            "saved_cascade.json",
+            serde_json::to_string(&cascade).expect("Failed to serialize cascade to string"),
+        )
+        .expect("Failed to write serialized cascade to file");
 
         println!("Saved results to 'saved_cascade.json'");
     }
@@ -244,12 +254,15 @@ impl Learner {
         // Load the test image
         let (test_img, sliding_windows) = preprocess::load_test_image(test_img_path);
 
-        println!("Considering a total of {} faces within the test image", sliding_windows.len());
+        println!(
+            "Considering a total of {} faces within the test image",
+            sliding_windows.len()
+        );
 
         let mut num_faces = 0;
         let mut faces = Vec::new();
         for (y, x) in sliding_windows {
-            let subimg = test_img.slice(s![y..y+64, x..x+64]);
+            let subimg = test_img.slice(s![y..y + 64, x..x + 64]);
 
             for (i, classifier) in cascade.iter().enumerate() {
                 let classification = classifier.evaluate(&subimg);
@@ -265,25 +278,35 @@ impl Learner {
             }
         }
 
-        println!("Number of identified by trained cascaded learner: {}", num_faces);
+        println!(
+            "Number of identified by trained cascaded learner: {}",
+            num_faces
+        );
+        println!("Rendering the output test image...");
+
+        let pb = ProgressBar::new(faces.len() as u64);
+        pb.set_style(
+            ProgressStyle::default_bar().template("[{elapsed_precise}] {wide_bar} ({eta})"),
+        );
 
         // Open the image with image_proc to draw on the boxes
         let test_img = image::open(test_img_path).expect("Failed to open test image");
 
-        // This is incredibly stupid. Unfortunately, no time to figure out something
-        // better.
         let face_rect = Rect::at(faces[0].0 as i32, faces[0].1 as i32).of_size(64, 64);
-        let mut partials = vec![imageproc::drawing::draw_hollow_rect(&test_img, face_rect, Rgba([255, 0, 0, 255]))];
-
-        let mut ind = 0;
+        let mut test_img =
+            imageproc::drawing::draw_hollow_rect(&test_img, face_rect, Rgba([255, 0, 0, 255]));
+        pb.inc(1);
         for (face_x, face_y) in faces.iter().skip(1) {
             let face_rect = Rect::at(*face_x as i32, *face_y as i32).of_size(64, 64);
-            partials.push(imageproc::drawing::draw_hollow_rect(&partials[ind], face_rect, Rgba([255, 0, 0, 255])));
-            ind += 1;
+            test_img =
+                imageproc::drawing::draw_hollow_rect(&test_img, face_rect, Rgba([255, 0, 0, 255]));
+            pb.inc(1);
         }
+        pb.finish_with_message("done");
 
-        partials[num_faces - 1].save("test_img_out.jpg").unwrap();
-        println!("Saved output image to 'test_img_out.jpg'");
+        let output_filename = "test_img_out.jpg";
+        test_img.save(output_filename).unwrap();
+        println!("Saved output image to '{}'", output_filename);
     }
 }
 

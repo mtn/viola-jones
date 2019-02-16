@@ -1,5 +1,5 @@
 use indicatif::{ProgressBar, ProgressStyle};
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 use std::f64;
 
 type Feature = super::features::HaarFeature;
@@ -81,7 +81,11 @@ impl WeakClassifier {
     ) -> Vec<(WeakClassifier, f64)> {
         assert!(training_samples.len() == distribution_t.len());
 
-        println!("Running a search over {} features and {} training samples...", features.len(), training_samples.len());
+        println!(
+            "Running a search over {} features and {} training samples...",
+            features.len(),
+            training_samples.len()
+        );
         let pb = ProgressBar::new(features.len() as u64);
         pb.set_style(
             ProgressStyle::default_bar().template("[{elapsed_precise}] {wide_bar} ({eta})"),

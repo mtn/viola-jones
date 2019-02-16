@@ -158,7 +158,12 @@ pub fn load_test_image(test_img_path: &str) -> (Matrix, Vec<(usize, usize)>) {
 
 /// Compute the top-left coordinates of a square window sliding over a space rectangle
 /// of dimensions (xmax, ymax). Coordinates are ordered (y, x) for use in ndarrays.
-fn get_sliding_window_coords(xmax: usize, ymax: usize, window_side_len: usize, stride: usize) -> Vec<(usize, usize)> {
+fn get_sliding_window_coords(
+    xmax: usize,
+    ymax: usize,
+    window_side_len: usize,
+    stride: usize,
+) -> Vec<(usize, usize)> {
     let mut coords = Vec::new();
     for y in (0..ymax).step_by(stride) {
         for x in (0..xmax).step_by(stride) {
@@ -249,9 +254,10 @@ mod tests {
         let stride = 3;
         let window_side_len = 4;
 
-        let mut sliding_window_result = get_sliding_window_coords(xmax, ymax, stride, window_side_len);
+        let mut sliding_window_result =
+            get_sliding_window_coords(xmax, ymax, stride, window_side_len);
         sliding_window_result.sort();
-        let expected = vec![(0,0), (0,3), (3,0), (3,3)];
+        let expected = vec![(0, 0), (0, 3), (3, 0), (3, 3)];
 
         assert!(sliding_window_result.len() == 4);
     }

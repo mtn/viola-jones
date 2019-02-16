@@ -1,4 +1,4 @@
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 use std::f64;
 
 type WeakClassifier = super::weak_classifier::WeakClassifier;
