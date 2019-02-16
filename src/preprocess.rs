@@ -2,7 +2,7 @@
 extern crate image;
 
 use super::{Classification, Matrix};
-use image::DynamicImage;
+use image::{DynamicImage, GenericImageView};
 use ndarray::Array;
 use std::fs;
 
@@ -39,43 +39,38 @@ pub fn load_and_preprocess_data(
 }
 
 /// Load an opened training image into a matrix
-fn training_img_as_matrix(img: DynamicImage) -> Matrix {
+fn img_as_matrix(img: DynamicImage) -> Matrix {
     // raw_pixels gives a flat vector of the form [r1,g1,b1,r2,g2,b2,...]
     let raw_pixels = img.raw_pixels();
-    assert!(raw_pixels.len() == 64 * 64 * 3);
+    let (w, h) = img.dimensions();
 
-    let mut out_pixels: Vec<i64> = Vec::with_capacity(64 * 64);
-    // Average over the colors (doing integer division)
-    for i in 0..(64 * 64) {
-        let start_ind = i * 3;
-        let mut out_px = 0;
-        out_px += raw_pixels[start_ind] / 3;
-        out_px += raw_pixels[start_ind + 1] / 3;
-        out_px += raw_pixels[start_ind + 2] / 3;
+    let out_pixels = match img.color() {
+        image::ColorType::Gray(8) => {
+            assert!(raw_pixels.len() == w as usize * h as usize);
+            img.raw_pixels().iter().map(|x| *x as i64).collect()
+        },
+        image::ColorType::RGB(8) => {
+            assert!(raw_pixels.len() == w as usize * h as usize * 3);
+            let mut out: Vec<i64> = Vec::with_capacity(64 * 64);
+            // Average over the colors (doing integer division)
+            for i in 0..(64 * 64) {
+                let start_ind = i * 3;
+                let mut out_px = 0;
+                out_px += raw_pixels[start_ind] / 3;
+                out_px += raw_pixels[start_ind + 1] / 3;
+                out_px += raw_pixels[start_ind + 2] / 3;
 
-        out_pixels.push(out_px as i64);
-    }
+                out.push(out_px as i64);
+            }
+            out
+        },
+        _ => unimplemented!(),
+    };
 
     let pixel_arr = Array::from_vec(out_pixels);
 
     pixel_arr
-        .into_shape((64, 64))
-        .expect("Failed to transform pixel array into matrix")
-}
-
-/// Load an opened test into a matrix
-/// TODO abstract into function that works over all image dimensions
-fn test_img_as_matrix(img: DynamicImage) -> Matrix {
-    // raw_pixels is just a raw array of pixels, for some reason. Maybe there's something
-    // in the jpg spec that indicates when an image isn't rgb.
-    let raw_pixels: Vec<i64> = img.raw_pixels().iter().map(|x| *x as i64).collect();
-    let max_pixel = raw_pixels.iter().cloned().fold(0, i64::max);
-    assert!(max_pixel <= 255);
-
-    let pixel_arr = Array::from_vec(raw_pixels);
-
-    pixel_arr
-        .into_shape((1280, 1600))
+        .into_shape((h as usize, w as usize))
         .expect("Failed to transform pixel array into matrix")
 }
 
@@ -98,7 +93,7 @@ fn load_imgs_from_dir(dir_name: &str) -> Vec<Matrix> {
             continue;
         } else if "jpg" == ext.unwrap() {
             let img = image::open(img_path).expect("Failed to open image");
-            loaded.push(training_img_as_matrix(img));
+            loaded.push(img_as_matrix(img));
         }
     }
 
@@ -146,7 +141,7 @@ fn compute_integral_images(imgs: Vec<Matrix>) -> Vec<Matrix> {
 /// image, and a top-right coordinate in the image.
 pub fn load_test_image(test_img_path: &str) -> (Matrix, Vec<(usize, usize)>) {
     let test_img = image::open(test_img_path).expect("Failed to open test image");
-    let test_img_mat = test_img_as_matrix(test_img);
+    let test_img_mat = img_as_matrix(test_img);
     // 1280 rows and 1600 columns
     assert!((1280, 1600) == test_img_mat.dim());
 
@@ -194,7 +189,7 @@ mod tests {
             }
         }
 
-        let mat = training_img_as_matrix(img);
+        let mat = img_as_matrix(img);
 
         assert!(mat.ndim() == 2);
         assert!(mat.dim() == (64, 64));
