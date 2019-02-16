@@ -1,6 +1,4 @@
 /// General utility functions
-use super::Matrix;
-
 type MatrixView<'a> = ndarray::ArrayView2<'a, i64>;
 
 #[derive(Debug)]
@@ -48,11 +46,11 @@ mod tests {
             .into_shape((5, 5))
             .expect("Failed to transform input array into matrix");
 
-        assert!(compute_area(&img, &Rectangle::new((2, 2), (2, 2))) == 0);
-        assert!(compute_area(&img, &Rectangle::new((0, 0), (2, 2))) == 14);
-        assert!(compute_area(&img, &Rectangle::new((0, 0), (4, 4))) == 136);
-        assert!(compute_area(&img, &Rectangle::new((1, 1), (4, 4))) == 99);
-        assert!(compute_area(&img, &Rectangle::new((1, 1), (2, 2))) == 6);
-        assert!(compute_area(&img, &Rectangle::new((1, 1), (3, 3))) == 34);
+        assert!(compute_area(&img.view(), &Rectangle::new((2, 2), (2, 2))) == 0);
+        assert!(compute_area(&img.view(), &Rectangle::new((0, 0), (2, 2))) == 14);
+        assert!(compute_area(&img.view(), &Rectangle::new((0, 0), (4, 4))) == 136);
+        assert!(compute_area(&img.view(), &Rectangle::new((1, 1), (4, 4))) == 99);
+        assert!(compute_area(&img.view(), &Rectangle::new((1, 1), (2, 2))) == 6);
+        assert!(compute_area(&img.view(), &Rectangle::new((1, 1), (3, 3))) == 34);
     }
 }

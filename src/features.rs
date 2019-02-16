@@ -228,8 +228,8 @@ mod tests {
         let two_vert2 = HaarFeature::new(HaarFeatureType::TwoVertical, 2, 2, 0, 0);
 
         let m1 = compute_integral_image(&Array::ones((4, 4)));
-        assert!(two_vert1.evaluate(&m1) == 0);
-        assert!(two_vert2.evaluate(&m1) == 0);
+        assert!(two_vert1.evaluate(&m1.view()) == 0);
+        assert!(two_vert2.evaluate(&m1.view()) == 0);
 
         let mut m2 = Array::ones((4, 4));
         for y in 2..4 {
@@ -238,8 +238,8 @@ mod tests {
             }
         }
         let m2 = compute_integral_image(&m2);
-        assert!(two_vert1.evaluate(&m2) == 0);
-        assert!(two_vert2.evaluate(&m2) == 8);
+        assert!(two_vert1.evaluate(&m2.view()) == 0);
+        assert!(two_vert2.evaluate(&m2.view()) == 8);
     }
 
     #[test]
@@ -249,9 +249,9 @@ mod tests {
         let two_horiz3 = HaarFeature::new(HaarFeatureType::TwoHorizontal, 1, 1, 1, 0);
 
         let m1 = compute_integral_image(&Array::ones((4, 4)));
-        assert!(two_horiz1.evaluate(&m1) == 0);
-        assert!(two_horiz2.evaluate(&m1) == 0);
-        assert!(two_horiz3.evaluate(&m1) == 0);
+        assert!(two_horiz1.evaluate(&m1.view()) == 0);
+        assert!(two_horiz2.evaluate(&m1.view()) == 0);
+        assert!(two_horiz3.evaluate(&m1.view()) == 0);
 
         let mut m2 = Array::ones((4, 4));
         for y in 0..4 {
@@ -261,9 +261,9 @@ mod tests {
         }
 
         let m2 = compute_integral_image(&m2);
-        assert!(two_horiz1.evaluate(&m2) == 0);
-        assert!(two_horiz2.evaluate(&m2) == -8);
-        assert!(two_horiz3.evaluate(&m2) == -2);
+        assert!(two_horiz1.evaluate(&m2.view()) == 0);
+        assert!(two_horiz2.evaluate(&m2.view()) == -8);
+        assert!(two_horiz3.evaluate(&m2.view()) == -2);
     }
 
     #[test]
@@ -275,8 +275,8 @@ mod tests {
         let three_horiz5 = HaarFeature::new(HaarFeatureType::ThreeHorizontal, 2, 2, 0, 3);
 
         let m1 = compute_integral_image(&Array::ones((4, 4)));
-        assert!(three_horiz1.evaluate(&m1) == -1);
-        assert!(three_horiz2.evaluate(&m1) == -1);
+        assert!(three_horiz1.evaluate(&m1.view()) == -1);
+        assert!(three_horiz2.evaluate(&m1.view()) == -1);
 
         let mut m2 = Array::ones((6, 6));
         for y in 0..6 {
@@ -286,11 +286,11 @@ mod tests {
         }
 
         let m2 = compute_integral_image(&m2);
-        assert!(three_horiz1.evaluate(&m2) == 1);
-        assert!(three_horiz2.evaluate(&m2) == -1);
-        assert!(three_horiz3.evaluate(&m2) == 0);
-        assert!(three_horiz4.evaluate(&m2) == -2);
-        assert!(three_horiz5.evaluate(&m2) == 0);
+        assert!(three_horiz1.evaluate(&m2.view()) == 1);
+        assert!(three_horiz2.evaluate(&m2.view()) == -1);
+        assert!(three_horiz3.evaluate(&m2.view()) == 0);
+        assert!(three_horiz4.evaluate(&m2.view()) == -2);
+        assert!(three_horiz5.evaluate(&m2.view()) == 0);
     }
 
     #[test]
@@ -302,8 +302,8 @@ mod tests {
         let two_by_two5 = HaarFeature::new(HaarFeatureType::TwoByTwo, 2, 2, 2, 2);
 
         let m1 = compute_integral_image(&Array::ones((4, 4)));
-        assert!(two_by_two1.evaluate(&m1) == 0);
-        assert!(two_by_two2.evaluate(&m1) == 0);
+        assert!(two_by_two1.evaluate(&m1.view()) == 0);
+        assert!(two_by_two2.evaluate(&m1.view()) == 0);
 
         let mut m2 = Array::ones((6, 6));
         for y in 0..6 {
@@ -313,10 +313,10 @@ mod tests {
         }
 
         let m2 = compute_integral_image(&m2);
-        assert!(two_by_two1.evaluate(&m2) == 0);
-        assert!(two_by_two2.evaluate(&m2) == 0);
-        assert!(two_by_two3.evaluate(&m2) == 0);
-        assert!(two_by_two4.evaluate(&m2) == 0);
-        assert!(two_by_two5.evaluate(&m2) == 0);
+        assert!(two_by_two1.evaluate(&m2.view()) == 0);
+        assert!(two_by_two2.evaluate(&m2.view()) == 0);
+        assert!(two_by_two3.evaluate(&m2.view()) == 0);
+        assert!(two_by_two4.evaluate(&m2.view()) == 0);
+        assert!(two_by_two5.evaluate(&m2.view()) == 0);
     }
 }

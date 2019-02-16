@@ -3,7 +3,6 @@
 extern crate indicatif;
 #[macro_use]
 extern crate ndarray;
-extern crate bincode;
 extern crate serde;
 
 mod features;
@@ -12,7 +11,6 @@ mod strong_classifier;
 mod util;
 mod weak_classifier;
 
-use bincode::{deserialize_from, serialize_into};
 use features::HaarFeature;
 use image::Rgba;
 use imageproc::rect::Rect;
@@ -22,13 +20,11 @@ use std::f64;
 use std::fs;
 use std::fs::File;
 use std::io::prelude::*;
-use std::io::{BufReader, BufWriter};
 use std::ops::Mul;
 use strong_classifier::StrongClassifier;
 use weak_classifier::WeakClassifier;
 
 pub type Matrix = ndarray::Array2<i64>;
-type MatrixView<'a> = ndarray::ArrayView2<'a, i64>;
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Classification {
@@ -52,8 +48,8 @@ impl Mul for Classification {
 
     fn mul(self, rhs: Classification) -> f64 {
         match self {
-            Classification::Face => rhs * 1f64,
-            Classification::NonFace => rhs * -1f64,
+            Classification::Face => rhs * 1.,
+            Classification::NonFace => rhs * -1.,
         }
     }
 }
@@ -116,7 +112,7 @@ impl Learner {
             // Turn this into a strong learner by itself and return
             if best_error == 0. {
                 println!("Found a single weak classifier that had 0 error, returning early");
-                unimplemented!()
+                return strong
             }
 
             // Update the distribution weights

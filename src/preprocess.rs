@@ -255,10 +255,12 @@ mod tests {
         let window_side_len = 4;
 
         let mut sliding_window_result =
-            get_sliding_window_coords(xmax, ymax, stride, window_side_len);
+            get_sliding_window_coords(xmax, ymax, window_side_len, stride);
         sliding_window_result.sort();
         let expected = vec![(0, 0), (0, 3), (3, 0), (3, 3)];
 
         assert!(sliding_window_result.len() == 4);
+        println!("{:?}", sliding_window_result);
+        assert!(expected == sliding_window_result);
     }
 }

@@ -149,23 +149,4 @@ impl WeakClassifier {
     pub fn evaluate_raw(&self, img: &MatrixView) -> i64 {
         self.toggle * (self.feature.evaluate(img) - self.threshold)
     }
-
-    /// Computes the weighted error of the weak classifier
-    pub fn compute_error(
-        &self,
-        input_samples: &Vec<(MatrixView, Classification)>,
-        weights: &Vec<f64>,
-    ) -> f64 {
-        let mut weighted_error = 0.;
-
-        for ((sample, label), weight) in input_samples.iter().zip(weights.iter()) {
-            let classification = self.evaluate(sample);
-
-            if classification != *label {
-                weighted_error += *weight;
-            }
-        }
-
-        weighted_error
-    }
 }
